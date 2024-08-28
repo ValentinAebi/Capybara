@@ -1,6 +1,6 @@
 package com.github.valentinaebi.capybara
 
-import com.github.valentinaebi.capybara.cfg.BBTerminator
+import com.github.valentinaebi.capybara.cfg.BasicBlockTerminator
 import com.github.valentinaebi.capybara.cfg.BasicBlock
 import com.github.valentinaebi.capybara.cfg.Catch
 import com.github.valentinaebi.capybara.cfg.Method
@@ -98,10 +98,10 @@ class MethodAnalyzer(
     private fun buildBasicBlocks(
         firstInstruction: AbstractInsnNode,
         blockStartingAtInsn: Array<BasicBlock?>,
-        tryStartLabels: MutableMap<Label, TryCatchBlockNode>,
+        tryStartLabels: Map<Label, TryCatchBlockNode>,
         catches: LinkedHashMap<TryCatchBlockNode, Catch>,
-        tryEndLabels: MutableMap<Label, TryCatchBlockNode>
-    ): MutableMap<BasicBlock, BasicBlock> {
+        tryEndLabels: Map<Label, TryCatchBlockNode>
+    ): Map<BasicBlock, BasicBlock> {
 
         val basicBlocks = mutableMapOf<BasicBlock, BasicBlock>()
 
@@ -131,10 +131,9 @@ class MethodAnalyzer(
             }
 
             if (blockInsns.isNotEmpty()) {
-                val terminator: BBTerminator = TODO("compute terminator according to last instruction in list")
-                val block = BasicBlock(blockInsns, terminator, currCatch)
+                val terminator: BasicBlockTerminator = TODO("compute terminator according to last instruction in list")
                 val placeholderBlock = blockStartingAtInsn[indexOfFirstInsnInCurrBlock]!!
-                basicBlocks[placeholderBlock] = block
+                basicBlocks[placeholderBlock] = BasicBlock(blockInsns, terminator, currCatch)
             }
         }
         return basicBlocks
@@ -142,7 +141,7 @@ class MethodAnalyzer(
 
     private fun collectTryCatchLabels(
         tryCatchBlocks: List<TryCatchBlockNode>
-    ): Triple<MutableMap<Label, TryCatchBlockNode>, MutableMap<Label, TryCatchBlockNode>, MutableMap<Label, TryCatchBlockNode>> {
+    ): Triple<Map<Label, TryCatchBlockNode>, Map<Label, TryCatchBlockNode>, Map<Label, TryCatchBlockNode>> {
         val tryStartLabels = mutableMapOf<Label, TryCatchBlockNode>()
         val tryEndLabels = mutableMapOf<Label, TryCatchBlockNode>()
         val tryHandlerLabels = mutableMapOf<Label, TryCatchBlockNode>()
@@ -157,9 +156,9 @@ class MethodAnalyzer(
     private fun findBlocksAndLinesAndBuildCatchesHierarchy(
         instructions: Array<AbstractInsnNode>,
         jumpTargetLabels: Set<LabelNode>,
-        tryStartLabels: MutableMap<Label, TryCatchBlockNode>,
-        tryEndLabels: MutableMap<Label, TryCatchBlockNode>,
-        tryHandlerLabels: MutableMap<Label, TryCatchBlockNode>
+        tryStartLabels: Map<Label, TryCatchBlockNode>,
+        tryEndLabels: Map<Label, TryCatchBlockNode>,
+        tryHandlerLabels: Map<Label, TryCatchBlockNode>
     ): Triple<Array<BasicBlock?>, Map<TryCatchBlockNode, TryCatchBlockNode?>, Map<Label, Int>> {
         val blockStartingAtInsn = Array<BasicBlock?>(instructions.size) { null }
         val tryBlockToParent = mutableMapOf<TryCatchBlockNode, TryCatchBlockNode?>()
@@ -213,7 +212,7 @@ class MethodAnalyzer(
     private fun collectLabelsPrecedingBasicBlockStarts(
         firstInstruction: AbstractInsnNode,
         blockStartingAtInsn: Array<BasicBlock?>
-    ): MutableMap<Label, BasicBlock> {
+    ): Map<Label, BasicBlock> {
         val labelsToBasicBlock = mutableMapOf<Label, BasicBlock>()
         var currBasicBlock: BasicBlock? = null
         var currInsn: AbstractInsnNode? = firstInstruction
@@ -283,17 +282,17 @@ class MethodAnalyzer(
 
     private fun isHandlerStartInsn(
         insn: AbstractInsnNode,
-        tryHandlerLabels: MutableMap<Label, TryCatchBlockNode>
+        tryHandlerLabels: Map<Label, TryCatchBlockNode>
     ): Boolean = insn is LabelNode && insn.label in tryHandlerLabels
 
     private fun isTryStartInsn(
         insn: AbstractInsnNode,
-        tryStartLabels: MutableMap<Label, TryCatchBlockNode>
+        tryStartLabels: Map<Label, TryCatchBlockNode>
     ): Boolean = insn is LabelNode && insn.label in tryStartLabels
 
     private fun isTryEndInsn(
         insn: AbstractInsnNode,
-        tryEndLabels: MutableMap<Label, TryCatchBlockNode>
+        tryEndLabels: Map<Label, TryCatchBlockNode>
     ): Boolean = insn is LabelNode && insn.label in tryEndLabels
 
     private fun isReturnOpcode(opcode: Int): Boolean = Opcodes.IRETURN <= opcode && opcode <= Opcodes.RETURN

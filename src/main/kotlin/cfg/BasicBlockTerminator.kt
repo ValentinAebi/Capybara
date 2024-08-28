@@ -2,15 +2,15 @@ package com.github.valentinaebi.capybara.cfg
 
 import com.github.valentinaebi.capybara.ProgramValue
 
-sealed interface BBTerminator {
+sealed interface BasicBlockTerminator {
     fun resolve(resolver: Map<BasicBlock, BasicBlock>)
 }
 
-data object ReturnTerminator : BBTerminator {
+data object ReturnTerminator : BasicBlockTerminator {
     override fun resolve(resolver: Map<BasicBlock, BasicBlock>) = Unit
 }
 
-class SingleSuccessorTerminator(private var _successor: BasicBlock) : BBTerminator {
+class SingleSuccessorTerminator(private var _successor: BasicBlock) : BasicBlockTerminator {
 
     val successor: BasicBlock get() = _successor
 
@@ -23,7 +23,7 @@ class IteTerminator(
     val cond: (ProgramValue) -> Boolean,
     private var _succIfTrue: BasicBlock,
     private var _succIfFalse: BasicBlock
-) : BBTerminator {
+) : BasicBlockTerminator {
 
     val succIfTrue get() = _succIfTrue
     val succIfFalse get() = _succIfFalse
@@ -37,7 +37,7 @@ class IteTerminator(
 class SwitchTerminator(
     private var _keys: Map<ProgramValue, BasicBlock>,
     private var _default: BasicBlock?
-) : BBTerminator {
+) : BasicBlockTerminator {
 
     val keys: Map<ProgramValue, BasicBlock> get() = _keys
     val default: BasicBlock? get() = _default

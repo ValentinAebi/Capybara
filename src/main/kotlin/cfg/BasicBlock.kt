@@ -7,7 +7,7 @@ import org.objectweb.asm.tree.analysis.Frame
 
 class BasicBlock(
     val insnList: List<AbstractInsnNode>,
-    val terminator: BBTerminator,
+    val terminator: BasicBlockTerminator,
     val lastCatch: Catch?
 ) {
 

@@ -2,9 +2,17 @@ package com.github.valentinaebi.capybara.cfg
 
 import com.github.valentinaebi.capybara.Type
 
-data class Catch(
-    val exceptionTypes: Type,
-    val handler: BasicBlock,
+class Catch(
+    val exceptionType: Type,
+    private var _handler: BasicBlock,
     val parentCatch: Catch?,
     val childrenCatches: List<Catch>
-)
+){
+
+    val handler: BasicBlock get() = _handler
+
+    fun resolve(resolver: Map<BasicBlock, BasicBlock>){
+        _handler = resolver[_handler]!!
+    }
+
+}

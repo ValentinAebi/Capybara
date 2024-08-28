@@ -5,7 +5,7 @@ import com.github.valentinaebi.capybara.SymbolicInterpreter
 import org.objectweb.asm.tree.AbstractInsnNode
 import org.objectweb.asm.tree.analysis.Frame
 
-data class BasicBlock(
+class BasicBlock(
     val insnList: List<AbstractInsnNode>,
     val terminator: BBTerminator,
     val lastCatch: Catch?

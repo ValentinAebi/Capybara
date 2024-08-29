@@ -1,4 +1,4 @@
-package com.github.valentinaebi.capybara
+package com.github.valentinaebi.capybara.values
 
 import org.objectweb.asm.tree.analysis.Value
 import kotlin.math.max
@@ -19,13 +19,13 @@ data class NumericUnaryValue(val op: UnaryOperation, val operand: NumericValue) 
 data class NumericBinaryValue(val left: NumericValue, val operation: BinaryOperation, val right: NumericValue) : NumericValue {
     override fun getSize(): Int = max(left.size, right.size)
 }
-class ConcreteNumeric32BitsValue(val value: Int) : NumericValue {
+data class ConcreteNumeric32BitsValue(val value: Int) : NumericValue {
     override fun getSize(): Int = 1
 }
-class ConcreteLongValue(val value: Long) : NumericValue {
+data class ConcreteLongValue(val value: Long) : NumericValue {
     override fun getSize(): Int = 2
 }
-class ConcreteDoubleValue(val value: Double) : NumericValue {
+data class ConcreteDoubleValue(val value: Double) : NumericValue {
     override fun getSize(): Int = 2
 }
 class Symbolic32BitsValue : NumericValue {

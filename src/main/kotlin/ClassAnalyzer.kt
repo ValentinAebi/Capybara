@@ -1,11 +1,12 @@
 package com.github.valentinaebi.capybara
 
+import com.github.valentinaebi.capybara.cfg.Method
 import org.objectweb.asm.ClassVisitor
 import org.objectweb.asm.MethodVisitor
 import org.objectweb.asm.tree.MethodNode
 
 
-class ClassAnalyzer : ClassVisitor(API_LEVEL) {
+class ClassAnalyzer(val methodsPerClasses: MutableMap<String, List<Method>>) : ClassVisitor(API_LEVEL) {
 
     override fun visitMethod(
         access: Int,
@@ -14,7 +15,9 @@ class ClassAnalyzer : ClassVisitor(API_LEVEL) {
         signature: String?,
         exceptions: Array<out String>?
     ): MethodVisitor {
-        return MethodAnalyzer(name!!, MethodNode(access, name, descriptor, signature, exceptions))
+        val methods = mutableListOf<Method>()
+        methodsPerClasses[name!!] = methods
+        return MethodAnalyzer(name, MethodNode(access, name, descriptor, signature, exceptions), methods)
     }
 
 }

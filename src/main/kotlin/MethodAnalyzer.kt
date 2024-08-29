@@ -1,10 +1,23 @@
 package com.github.valentinaebi.capybara
 
-import com.github.valentinaebi.capybara.cfg.BasicBlockTerminator
 import com.github.valentinaebi.capybara.cfg.BasicBlock
+import com.github.valentinaebi.capybara.cfg.BasicBlockTerminator
 import com.github.valentinaebi.capybara.cfg.Catch
+import com.github.valentinaebi.capybara.cfg.IteTerminator
+import com.github.valentinaebi.capybara.cfg.LookupSwitchTerminator
 import com.github.valentinaebi.capybara.cfg.Method
 import com.github.valentinaebi.capybara.cfg.ReturnTerminator
+import com.github.valentinaebi.capybara.cfg.SingleSuccessorTerminator
+import com.github.valentinaebi.capybara.cfg.TableSwitchTerminator
+import com.github.valentinaebi.capybara.cfg.ThrowTerminator
+import com.github.valentinaebi.capybara.types.ReferenceType
+import com.github.valentinaebi.capybara.values.BinaryValuePredicate.Equal
+import com.github.valentinaebi.capybara.values.BinaryValuePredicate.GreaterThan
+import com.github.valentinaebi.capybara.values.BinaryValuePredicate.LessThan
+import com.github.valentinaebi.capybara.values.UnaryValuePredicate.GreaterThanZero
+import com.github.valentinaebi.capybara.values.UnaryValuePredicate.IsNull
+import com.github.valentinaebi.capybara.values.UnaryValuePredicate.IsZero
+import com.github.valentinaebi.capybara.values.UnaryValuePredicate.LessThanZero
 import org.objectweb.asm.Label
 import org.objectweb.asm.MethodVisitor
 import org.objectweb.asm.Opcodes
@@ -12,38 +25,32 @@ import org.objectweb.asm.tree.AbstractInsnNode
 import org.objectweb.asm.tree.JumpInsnNode
 import org.objectweb.asm.tree.LabelNode
 import org.objectweb.asm.tree.LineNumberNode
+import org.objectweb.asm.tree.LookupSwitchInsnNode
 import org.objectweb.asm.tree.MethodNode
+import org.objectweb.asm.tree.TableSwitchInsnNode
 import org.objectweb.asm.tree.TryCatchBlockNode
 import org.objectweb.asm.tree.analysis.AnalyzerException
 import org.objectweb.asm.util.Printer
+import org.objectweb.asm.util.TraceMethodVisitor
+import java.io.PrintWriter
+import java.io.StringWriter
 
 
 class MethodAnalyzer(
     private val ownerClassInternalName: String,
-    methodNode: MethodNode
+    methodNode: MethodNode,
+    val methods: MutableList<Method>
 ) : MethodVisitor(API_LEVEL, methodNode) {
 
     private val methodNode: MethodNode get() = mv as MethodNode
 
     override fun visitEnd() {
         val instructions = methodNode.instructions.toArray()
-        println("Method ${methodNode.name}:")
-        for (insn in instructions) {
-            val opcode = insn.opcode
-            if (opcode >= 0) {
-                println(Printer.OPCODES[opcode])
-            }
-        }
-        println()
-    }
-
-    private fun analyzeMethod(): Method {
-
-        val instructions = methodNode.instructions.toArray()
         val tryCatchBlocks = methodNode.tryCatchBlocks
 
         if (instructions.isEmpty()) {
-            return Method(emptyList(), emptyList())
+            methods.add(Method(emptyList(), emptyList()))
+            return
         }
 
         val (tryStartLabels, tryEndLabels, tryHandlerLabels) = collectTryCatchLabels(tryCatchBlocks)
@@ -67,8 +74,11 @@ class MethodAnalyzer(
                 tryHandlerLabels
             )
 
+        // TODO remove (debug)
+        printInstructions(instructions, blockStartingAtInsn)
+
         // 3rd pass: collect labels identifying each basic block
-        val labelsToBasicBlock = collectLabelsPrecedingBasicBlockStarts(
+        val labelsToBasicBlocks = collectLabelsPrecedingBasicBlockStarts(
             instructions.first(),
             blockStartingAtInsn
         )
@@ -76,67 +86,41 @@ class MethodAnalyzer(
         // Build unresolved catches, lazily evaluated in topological order
         val catches = linkedMapOf<TryCatchBlockNode, Catch>()
         tryCatchBlocks.forEach {
-            computeCatchIfAbsent(it, catches, tryBlockToParent, labelsToBasicBlock)
+            computeCatchIfAbsent(it, catches, tryBlockToParent, labelsToBasicBlocks)
         }
 
         // 4th pass: build actual basic blocks
         val basicBlocks = buildBasicBlocks(
             instructions.first(),
             blockStartingAtInsn,
-            tryStartLabels,
             catches,
-            tryEndLabels
+            labelsToBasicBlocks,
+            tryStartLabels,
+            tryEndLabels,
+            labelsToLineNumbers
         )
 
         // Resolve links to basic blocks
         basicBlocks.values.forEach { it.terminator.resolve(basicBlocks) }
         catches.values.forEach { it.resolve(basicBlocks) }
 
-        return Method(basicBlocks.values.toList(), catches.values.toList())
+        methods.add(Method(basicBlocks.values.toList(), catches.values.toList()))
     }
 
-    private fun buildBasicBlocks(
-        firstInstruction: AbstractInsnNode,
-        blockStartingAtInsn: Array<BasicBlock?>,
-        tryStartLabels: Map<Label, TryCatchBlockNode>,
-        catches: LinkedHashMap<TryCatchBlockNode, Catch>,
-        tryEndLabels: Map<Label, TryCatchBlockNode>
-    ): Map<BasicBlock, BasicBlock> {
-
-        val basicBlocks = mutableMapOf<BasicBlock, BasicBlock>()
-
-        var currInsn: AbstractInsnNode? = firstInstruction
-        var currInsnIdx = 0
-        var currCatch: Catch? = null
-
-        while (currInsn != null) {
-
-            val blockInsns = mutableListOf<AbstractInsnNode>()
-            val indexOfFirstInsnInCurrBlock = currInsnIdx
-            while (currInsn != null && (currInsnIdx == indexOfFirstInsnInCurrBlock || blockStartingAtInsn[currInsnIdx] == null)) {
-                if (currInsn is LabelNode) {
-                    tryStartLabels[currInsn.label]?.let {
-                        currCatch = catches[it]
-                    }
-                    tryEndLabels[currInsn.label]?.let {
-                        assert(currCatch == catches[it])
-                        currCatch = currCatch?.parentCatch
-                    }
-                } else if (isConcreteInsn(currInsn)) {
-                    // TODO also add line numbers
-                    blockInsns.add(currInsn)
-                }
-                currInsn = currInsn.next
-                currInsnIdx += 1
+    private fun printInstructions(instructions: Array<AbstractInsnNode>, blockStartingAtInsn: Array<BasicBlock?>) {
+        val printer = DebugInsnPrinter()
+        val methodPrinter = TraceMethodVisitor(printer)
+        var insnIdx = 0
+        for (insn in instructions) {
+            if (blockStartingAtInsn[insnIdx] != null) {
+                printer.makeSeparator()
             }
-
-            if (blockInsns.isNotEmpty()) {
-                val terminator: BasicBlockTerminator = TODO("compute terminator according to last instruction in list")
-                val placeholderBlock = blockStartingAtInsn[indexOfFirstInsnInCurrBlock]!!
-                basicBlocks[placeholderBlock] = BasicBlock(blockInsns, terminator, currCatch)
-            }
+            insn.accept(methodPrinter)
+            insnIdx += 1
         }
-        return basicBlocks
+        val stringWriter = StringWriter()
+        printer.print(PrintWriter(stringWriter))
+        println(stringWriter)
     }
 
     private fun collectTryCatchLabels(
@@ -185,8 +169,9 @@ class MethodAnalyzer(
             } else if (currInsn is LineNumberNode) {
                 labelsToLineNumbers[currInsn.start.label] = currInsn.line
             }
-            if (currInsnIdx < instructions.size - 1 && blockStartingAtInsn[currInsnIdx] == null && (
+            if (currInsnIdx < instructions.size - 1 && blockStartingAtInsn[currInsnIdx + 1] == null && (
                         currInsn.type == AbstractInsnNode.JUMP_INSN
+                                || isSwitchOpcode(opcode)
                                 || isReturnOpcode(opcode)
                                 || opcode == Opcodes.ATHROW
                         )
@@ -194,7 +179,7 @@ class MethodAnalyzer(
                 blockStartingAtInsn[currInsnIdx + 1] = newPlaceholderBlock()
             }
             if (
-                isJumpTarget(currInsn, jumpTargetLabels)
+                currInsn in jumpTargetLabels
                 || isTryStartInsn(currInsn, tryStartLabels)
                 || isHandlerStartInsn(currInsn, tryHandlerLabels)
             ) {
@@ -230,6 +215,136 @@ class MethodAnalyzer(
             currInsnIdx += 1
         }
         return labelsToBasicBlock
+    }
+
+    private fun buildBasicBlocks(
+        firstInstruction: AbstractInsnNode,
+        blockStartingAtInsn: Array<BasicBlock?>,
+        catches: LinkedHashMap<TryCatchBlockNode, Catch>,
+        labelsToBasicBlocks: Map<Label, BasicBlock>,
+        tryStartLabels: Map<Label, TryCatchBlockNode>,
+        tryEndLabels: Map<Label, TryCatchBlockNode>,
+        labelsToLineNumbers: Map<Label, Int>
+    ): Map<BasicBlock, BasicBlock> {
+
+        val basicBlocks = mutableMapOf<BasicBlock, BasicBlock>()
+
+        var currInsn: AbstractInsnNode? = firstInstruction
+        var currInsnIdx = 0
+        var currCatch: Catch? = null
+        var currLineNumber = -1
+
+        while (currInsn != null) {
+
+            val blockInsns = linkedMapOf<AbstractInsnNode, Int>()
+            val indexOfFirstInsnInCurrBlock = currInsnIdx
+            var indexOfLastInsnAddedToBlock = -1
+            while (currInsn != null && (currInsnIdx == indexOfFirstInsnInCurrBlock || blockStartingAtInsn[currInsnIdx] == null)) {
+                if (currInsn is LabelNode) {
+                    labelsToLineNumbers[currInsn.label]?.let {
+                        currLineNumber = it
+                    }
+                    tryStartLabels[currInsn.label]?.let {
+                        currCatch = catches[it]
+                    }
+                    tryEndLabels[currInsn.label]?.let {
+                        assert(currCatch == catches[it])
+                        currCatch = currCatch?.parentCatch
+                    }
+                } else if (isConcreteInsn(currInsn)) {
+                    blockInsns.put(currInsn, currLineNumber)
+                    indexOfLastInsnAddedToBlock = currInsnIdx
+                }
+                currInsn = currInsn.next
+                currInsnIdx += 1
+            }
+
+            if (blockInsns.isNotEmpty()) {
+                val lastInsnInBlock = blockInsns.lastEntry().key
+                val terminator: BasicBlockTerminator =
+                    computeTerminator(
+                        lastInsnInBlock,
+                        indexOfLastInsnAddedToBlock,
+                        labelsToBasicBlocks,
+                        blockStartingAtInsn
+                    )
+                if (lastInsnInBlock.opcode == Opcodes.GOTO || terminator !is SingleSuccessorTerminator) {
+                    blockInsns.remove(lastInsnInBlock)
+                }
+                val placeholderBlock = blockStartingAtInsn[indexOfFirstInsnInCurrBlock]!!
+                basicBlocks[placeholderBlock] = BasicBlock(blockInsns, terminator, currCatch)
+            }
+        }
+        return basicBlocks
+    }
+
+    private fun computeTerminator(
+        lastInsnInBlock: AbstractInsnNode,
+        idxOfLastInsnInBlock: Int,
+        labelsToBasicBlocks: Map<Label, BasicBlock>,
+        blockStartingAtInsn: Array<BasicBlock?>
+    ): BasicBlockTerminator {
+
+        fun nextBasicBlock(): BasicBlock {
+            var currInsn: AbstractInsnNode? = lastInsnInBlock.next
+            var currInsnIdx = idxOfLastInsnInBlock + 1
+            while (currInsn != null) {
+                val maybeBlock = blockStartingAtInsn[currInsnIdx]
+                if (maybeBlock != null) {
+                    return maybeBlock
+                }
+            }
+            throw AssertionError("method does not end with a return instruction")
+        }
+
+        val opcode = lastInsnInBlock.opcode
+        when {
+
+            isReturnOpcode(opcode) -> return ReturnTerminator(opcode != Opcodes.RETURN)
+
+            opcode == Opcodes.ATHROW -> return ThrowTerminator
+
+            lastInsnInBlock is JumpInsnNode -> {
+                val labelTarget = labelsToBasicBlocks[lastInsnInBlock.label.label]!!
+                return when (lastInsnInBlock.opcode) {
+                    Opcodes.IFEQ -> IteTerminator(IsZero, labelTarget, nextBasicBlock())
+                    Opcodes.IFNE -> IteTerminator(IsZero, nextBasicBlock(), labelTarget)
+                    Opcodes.IFLT -> IteTerminator(LessThanZero, labelTarget, nextBasicBlock())
+                    Opcodes.IFGE -> IteTerminator(LessThanZero, nextBasicBlock(), labelTarget)
+                    Opcodes.IFGT -> IteTerminator(GreaterThanZero, labelTarget, nextBasicBlock())
+                    Opcodes.IFLE -> IteTerminator(GreaterThanZero, nextBasicBlock(), labelTarget)
+                    Opcodes.IF_ICMPEQ, Opcodes.IF_ACMPEQ -> IteTerminator(Equal, labelTarget, nextBasicBlock())
+                    Opcodes.IF_ICMPNE, Opcodes.IF_ACMPNE -> IteTerminator(Equal, nextBasicBlock(), labelTarget)
+                    Opcodes.IF_ICMPLT -> IteTerminator(LessThan, labelTarget, nextBasicBlock())
+                    Opcodes.IF_ICMPGE -> IteTerminator(LessThan, nextBasicBlock(), labelTarget)
+                    Opcodes.IF_ICMPGT -> IteTerminator(GreaterThan, labelTarget, nextBasicBlock())
+                    Opcodes.IF_ICMPLE -> IteTerminator(GreaterThan, nextBasicBlock(), labelTarget)
+                    Opcodes.GOTO -> SingleSuccessorTerminator(labelsToBasicBlocks[lastInsnInBlock.label.label]!!)
+                    Opcodes.IFNULL -> IteTerminator(IsNull, labelTarget, nextBasicBlock())
+                    Opcodes.IFNONNULL -> IteTerminator(IsNull, nextBasicBlock(), labelTarget)
+                    else -> throw AssertionError("unexpected opcode: ${Printer.OPCODES[opcode]}")
+                }
+            }
+
+            lastInsnInBlock is TableSwitchInsnNode -> {
+                val cases = lastInsnInBlock.labels.map { labelsToBasicBlocks[it.label]!! }
+                val default = labelsToBasicBlocks[lastInsnInBlock.dflt.label]!!
+                return TableSwitchTerminator(lastInsnInBlock.min, cases, default)
+            }
+
+            lastInsnInBlock is LookupSwitchInsnNode -> {
+                val keys = lastInsnInBlock.keys
+                val labels = lastInsnInBlock.labels
+                val cases = mutableMapOf<Any, BasicBlock>()
+                for (i in keys.indices) {
+                    cases[keys[i]] = labelsToBasicBlocks[labels[i].label]!!
+                }
+                val default = labelsToBasicBlocks[lastInsnInBlock.dflt.label]!!
+                return LookupSwitchTerminator(cases, default)
+            }
+
+            else -> return SingleSuccessorTerminator(nextBasicBlock())
+        }
     }
 
     fun computeCatchIfAbsent(
@@ -270,15 +385,9 @@ class MethodAnalyzer(
         return null
     }
 
-    private fun isConcreteInsn(currInsn: AbstractInsnNode): Boolean =
-        currInsn !is LabelNode && currInsn !is LineNumberNode
+    private fun isConcreteInsn(currInsn: AbstractInsnNode): Boolean = currInsn.opcode != -1
 
-    private fun newPlaceholderBlock() = BasicBlock(emptyList(), ReturnTerminator, null)
-
-    private fun isJumpTarget(
-        insn: AbstractInsnNode,
-        jumpTargetLabels: Set<LabelNode>
-    ): Boolean = insn is JumpInsnNode && insn.label in jumpTargetLabels
+    private fun newPlaceholderBlock() = BasicBlock(linkedMapOf(), ReturnTerminator(false), null)
 
     private fun isHandlerStartInsn(
         insn: AbstractInsnNode,
@@ -296,5 +405,7 @@ class MethodAnalyzer(
     ): Boolean = insn is LabelNode && insn.label in tryEndLabels
 
     private fun isReturnOpcode(opcode: Int): Boolean = Opcodes.IRETURN <= opcode && opcode <= Opcodes.RETURN
+
+    private fun isSwitchOpcode(opcode: Int): Boolean = opcode == Opcodes.TABLESWITCH || opcode == Opcodes.LOOKUPSWITCH
 
 }

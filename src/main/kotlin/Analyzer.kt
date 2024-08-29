@@ -1,5 +1,6 @@
 package com.github.valentinaebi.capybara
 
+import com.github.valentinaebi.capybara.cfg.Method
 import org.objectweb.asm.ClassReader
 import java.io.File
 import java.nio.file.Files
@@ -17,13 +18,14 @@ fun main(args: Array<String>) {
         exitProcess(-1)
     }
 
+    val methodsPerClasses = mutableMapOf<String, List<Method>>()
     for (topLevelFile in topLevelFiles) {
         for (file in topLevelFile.walk()) {
             if (file.isFile && file.name.endsWith(CLASS_FILE_EXT)){
                 println("Analyzing ${file.name}")
                 val bytes = Files.readAllBytes(file.toPath())
                 val reader = ClassReader(bytes)
-                val classAnalyzer = ClassAnalyzer()
+                val classAnalyzer = ClassAnalyzer(methodsPerClasses)
                 reader.accept(classAnalyzer, ClassReader.EXPAND_FRAMES)
             }
         }

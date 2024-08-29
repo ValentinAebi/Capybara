@@ -1,12 +1,16 @@
 package com.github.valentinaebi.capybara.cfg
 
-import com.github.valentinaebi.capybara.ProgramValue
+import com.github.valentinaebi.capybara.values.ValuePredicate
 
 sealed interface BasicBlockTerminator {
     fun resolve(resolver: Map<BasicBlock, BasicBlock>)
 }
 
-data object ReturnTerminator : BasicBlockTerminator {
+data class ReturnTerminator(val mustPopValue: Boolean) : BasicBlockTerminator {
+    override fun resolve(resolver: Map<BasicBlock, BasicBlock>) = Unit
+}
+
+data object ThrowTerminator : BasicBlockTerminator {
     override fun resolve(resolver: Map<BasicBlock, BasicBlock>) = Unit
 }
 
@@ -20,7 +24,7 @@ class SingleSuccessorTerminator(private var _successor: BasicBlock) : BasicBlock
 }
 
 class IteTerminator(
-    val cond: (ProgramValue) -> Boolean,
+    val cond: ValuePredicate,
     private var _succIfTrue: BasicBlock,
     private var _succIfFalse: BasicBlock
 ) : BasicBlockTerminator {
@@ -34,16 +38,31 @@ class IteTerminator(
     }
 }
 
-class SwitchTerminator(
-    private var _keys: Map<ProgramValue, BasicBlock>,
+class TableSwitchTerminator(
+    val minKey: Int,
+    private var _cases: List<BasicBlock>,
     private var _default: BasicBlock?
 ) : BasicBlockTerminator {
 
-    val keys: Map<ProgramValue, BasicBlock> get() = _keys
+    val cases: List<BasicBlock> get() = _cases
     val default: BasicBlock? get() = _default
 
     override fun resolve(resolver: Map<BasicBlock, BasicBlock>) {
-        _keys = _keys.map { (pv, bb) -> pv to resolver[bb]!! }.toMap()
+        _cases = _cases.map { resolver[it]!! }
+        _default = resolver[_default]!!
+    }
+}
+
+class LookupSwitchTerminator(
+    private var _cases: Map<Any, BasicBlock>,
+    private var _default: BasicBlock?
+) : BasicBlockTerminator {
+
+    val keys: Map<Any, BasicBlock> get() = _cases
+    val default: BasicBlock? get() = _default
+
+    override fun resolve(resolver: Map<BasicBlock, BasicBlock>) {
+        _cases = _cases.map { (pv, bb) -> pv to resolver[bb]!! }.toMap()
         _default = resolver[_default]!!
     }
 }

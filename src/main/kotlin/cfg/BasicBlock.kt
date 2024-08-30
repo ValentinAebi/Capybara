@@ -19,7 +19,7 @@ class BasicBlock(
     val basicBlockIdx: Int
 ) {
 
-    override fun toString(): String = "Block $basicBlockIdx"
+    override fun toString(): String = "Block#$basicBlockIdx"
 
     fun fullDescr(): String {
         val printer = BasicBlockTextifier()
@@ -33,9 +33,9 @@ class BasicBlock(
             insn.accept(visitor)
         }
         val stringWriter = StringWriter()
-        stringWriter.append("Block ").append(basicBlockIdx.toString())
+        stringWriter.append("Block#").append(basicBlockIdx.toString())
         if (surroundingCatch != null) {
-            stringWriter.append(" surrounded by ").append(surroundingCatch.fullDescr())
+            stringWriter.append(" [surrounded by ").append(surroundingCatch.toString()).append("]")
         }
         stringWriter.append(":\n")
         printer.print(PrintWriter(stringWriter))

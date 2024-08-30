@@ -31,13 +31,9 @@ import org.objectweb.asm.tree.TableSwitchInsnNode
 import org.objectweb.asm.tree.TryCatchBlockNode
 import org.objectweb.asm.tree.analysis.AnalyzerException
 import org.objectweb.asm.util.Printer
-import org.objectweb.asm.util.TraceMethodVisitor
-import java.io.PrintWriter
-import java.io.StringWriter
 
 
 class MethodAnalyzer(
-    private val ownerClassInternalName: String,
     methodNode: MethodNode,
     val methods: MutableList<Method>
 ) : MethodVisitor(API_LEVEL, methodNode) {
@@ -45,11 +41,13 @@ class MethodAnalyzer(
     private val methodNode: MethodNode get() = mv as MethodNode
 
     override fun visitEnd() {
+
+        val methodName = methodNode.name
         val instructions = methodNode.instructions.toArray()
         val tryCatchBlocks = methodNode.tryCatchBlocks
 
         if (instructions.isEmpty()) {
-            methods.add(Method(emptyList(), emptyList()))
+            methods.add(Method(methodName, emptyList(), emptyList()))
             return
         }
 
@@ -73,9 +71,6 @@ class MethodAnalyzer(
                 tryEndLabels,
                 tryHandlerLabels
             )
-
-        // TODO remove (debug)
-        printInstructions(instructions, blockStartingAtInsn)
 
         // 3rd pass: collect labels identifying each basic block
         val labelsToBasicBlocks = collectLabelsPrecedingBasicBlockStarts(
@@ -104,23 +99,14 @@ class MethodAnalyzer(
         basicBlocks.values.forEach { it.terminator.resolve(basicBlocks) }
         catches.values.forEach { it.resolve(basicBlocks) }
 
-        methods.add(Method(basicBlocks.values.toList(), catches.values.toList()))
-    }
+        methods.add(Method(methodName, basicBlocks.values.toList(), catches.values.toList()))
 
-    private fun printInstructions(instructions: Array<AbstractInsnNode>, blockStartingAtInsn: Array<BasicBlock?>) {
-        val printer = DebugInsnPrinter()
-        val methodPrinter = TraceMethodVisitor(printer)
-        var insnIdx = 0
-        for (insn in instructions) {
-            if (blockStartingAtInsn[insnIdx] != null) {
-                printer.makeSeparator()
-            }
-            insn.accept(methodPrinter)
-            insnIdx += 1
+        // TODO remove (debug)
+        println("===== Start method $methodName =====")
+        for (basicBlock in basicBlocks.values) {
+            println(basicBlock.fullDescr().prependIndent(" "))
         }
-        val stringWriter = StringWriter()
-        printer.print(PrintWriter(stringWriter))
-        println(stringWriter)
+        println("===== End method $methodName =====\n")
     }
 
     private fun collectTryCatchLabels(
@@ -261,18 +247,18 @@ class MethodAnalyzer(
 
             if (blockInsns.isNotEmpty()) {
                 val lastInsnInBlock = blockInsns.lastEntry().key
-                val terminator: BasicBlockTerminator =
-                    computeTerminator(
-                        lastInsnInBlock,
-                        indexOfLastInsnAddedToBlock,
-                        labelsToBasicBlocks,
-                        blockStartingAtInsn
-                    )
+                val terminator = computeTerminator(
+                    lastInsnInBlock,
+                    indexOfLastInsnAddedToBlock,
+                    labelsToBasicBlocks,
+                    blockStartingAtInsn
+                )
                 if (lastInsnInBlock.opcode == Opcodes.GOTO || terminator !is SingleSuccessorTerminator) {
                     blockInsns.remove(lastInsnInBlock)
                 }
                 val placeholderBlock = blockStartingAtInsn[indexOfFirstInsnInCurrBlock]!!
-                basicBlocks[placeholderBlock] = BasicBlock(blockInsns, terminator, currCatch)
+                // FIXME problem with attribution of catch
+                basicBlocks[placeholderBlock] = BasicBlock(blockInsns, terminator, currCatch, basicBlocks.size)
             }
         }
         return basicBlocks
@@ -365,7 +351,8 @@ class MethodAnalyzer(
             ReferenceType(tryCatchBlockNode.type),
             labelsToBasicBlock[tryCatchBlockNode.handler.label]!!,
             maybeParentCatch,
-            childrenList
+            childrenList,
+            catches.size
         )
         catches[tryCatchBlockNode] = catch
         maybeParentCatch?.let { (it.childrenCatches as MutableList<Catch>).add(catch) }
@@ -387,7 +374,7 @@ class MethodAnalyzer(
 
     private fun isConcreteInsn(currInsn: AbstractInsnNode): Boolean = currInsn.opcode != -1
 
-    private fun newPlaceholderBlock() = BasicBlock(linkedMapOf(), ReturnTerminator(false), null)
+    private fun newPlaceholderBlock() = BasicBlock(linkedMapOf(), ReturnTerminator(false), null, -1)
 
     private fun isHandlerStartInsn(
         insn: AbstractInsnNode,

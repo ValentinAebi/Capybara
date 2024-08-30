@@ -1,6 +1,7 @@
 package com.github.valentinaebi.capybara.cfg
 
 data class Method(
+    val methodName: String,
     val basicBlocks: List<BasicBlock>,
     val catches: List<Catch>
 ){

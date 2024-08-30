@@ -17,7 +17,7 @@ class ClassAnalyzer(val methodsPerClasses: MutableMap<String, List<Method>>) : C
     ): MethodVisitor {
         val methods = mutableListOf<Method>()
         methodsPerClasses[name!!] = methods
-        return MethodAnalyzer(name, MethodNode(access, name, descriptor, signature, exceptions), methods)
+        return MethodAnalyzer(MethodNode(access, name, descriptor, signature, exceptions), methods)
     }
 
 }

@@ -18,7 +18,13 @@ import com.github.valentinaebi.capybara.values.RawValueType.Long
 import com.github.valentinaebi.capybara.values.Sub
 
 fun ProgramValue.negated(): ProgramValue {
-    return if (this is Negated) this.negated else Negated(this)
+    return when (this) {
+        is ConcreteInt32BitsValue -> ConcreteInt32BitsValue(-this.value)
+        is ConcreteLongValue -> ConcreteLongValue(-this.value)
+        is ConcreteFloatValue -> ConcreteFloatValue(-this.value)
+        is ConcreteDoubleValue -> ConcreteDoubleValue(-this.value)
+        else -> if (this is Negated) this.negated else Negated(this)
+    }
 }
 
 fun ProgramValue.plus(r: ProgramValue): ProgramValue {
@@ -57,6 +63,7 @@ fun ProgramValue.minus(r: ProgramValue): ProgramValue {
         l == r -> valueForType(l.rawValueType, 0)
         l.hasValue(0) -> r.negated()
         r.hasValue(0) -> l
+        r is Negated -> l.plus(r.negated)
         else -> Sub(l, r)
     }
 }
@@ -74,7 +81,8 @@ fun ProgramValue.times(r: ProgramValue): ProgramValue {
         )
     }
     return when {
-        r.hasValue(0) || l.hasValue(0) -> valueForType(l.rawValueType, 0)
+        r.hasValue(0) -> r
+        l.hasValue(0) -> l
         l.hasValue(1) -> r
         r.hasValue(1) -> l
         l.hasValue(-1) -> r.negated()
@@ -97,6 +105,7 @@ fun ProgramValue.divBy(r: ProgramValue): ProgramValue {
     }
     return when {
         l.hasValue(0) || r.hasValue(1) -> l
+        r.hasValue(-1) -> l.negated()
         l == r -> valueForType(l.rawValueType, 1)
         else -> Div(l, r)
     }

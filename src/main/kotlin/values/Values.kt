@@ -1,46 +1,54 @@
 package com.github.valentinaebi.capybara.values
 
 import org.objectweb.asm.tree.analysis.Value
-import kotlin.math.max
 
-sealed interface ProgramValue : Value
-
-sealed interface ReferenceValue : ProgramValue {
-    override fun getSize(): Int = 1
+sealed interface ProgramValue : Value {
+    val rawValueType: RawValueType
+    override fun getSize(): Int = rawValueType.size
 }
 
-class ConcreteReferenceValue(val typeInternalName: String) : ReferenceValue
-data object NullValue : ReferenceValue
-
-sealed interface NumericValue : ProgramValue
-data class NumericUnaryValue(val op: UnaryOperation, val operand: NumericValue) : NumericValue {
-    override fun getSize(): Int = operand.size
-}
-data class NumericBinaryValue(val left: NumericValue, val operation: BinaryOperation, val right: NumericValue) : NumericValue {
-    override fun getSize(): Int = max(left.size, right.size)
-}
-data class ConcreteNumeric32BitsValue(val value: Int) : NumericValue {
-    override fun getSize(): Int = 1
-}
-data class ConcreteLongValue(val value: Long) : NumericValue {
-    override fun getSize(): Int = 2
-}
-data class ConcreteDoubleValue(val value: Double) : NumericValue {
-    override fun getSize(): Int = 2
-}
-class Symbolic32BitsValue : NumericValue {
-    override fun getSize(): Int = 1
-}
-class Symbolic64BitsValue : NumericValue {
-    override fun getSize(): Int = 2
+object SecondBytePlaceholder : ProgramValue {
+    override val rawValueType: RawValueType = RawValueType.Placeholder
 }
 
-
-enum class UnaryOperation {
-    Neg, Not, // TODO others
+sealed interface ConcreteValue : ProgramValue {
+    val value: Number
 }
 
-enum class BinaryOperation {
-    Plus, Minus, Times, Div, Mod,
-    LAnd, LOr, // TODO others
+data class ConcreteInt32BitsValue(override val value: Int) : ConcreteValue {
+    override val rawValueType: RawValueType = RawValueType.Int32
 }
+
+data class ConcreteLongValue(override val value: Long) : ConcreteValue {
+    override val rawValueType: RawValueType = RawValueType.Long
+}
+
+data class ConcreteFloatValue(override val value: Float) : ConcreteValue {
+    override val rawValueType: RawValueType = RawValueType.Float
+}
+
+data class ConcreteDoubleValue(override val value: Double) : ConcreteValue {
+    override val rawValueType: RawValueType = RawValueType.Double
+}
+
+class SymbolicValue(override val rawValueType: RawValueType) : ProgramValue
+
+data class Negated(val negated: ProgramValue) : ProgramValue {
+    override val rawValueType: RawValueType get() = negated.rawValueType
+}
+
+sealed class BinaryValue : ProgramValue {
+    abstract val l: ProgramValue
+    abstract val r: ProgramValue
+
+    init {
+        require(l.rawValueType == r.rawValueType)
+    }
+
+    override val rawValueType: RawValueType get() = l.rawValueType
+}
+
+data class Add(override val l: ProgramValue, override val r: ProgramValue) : BinaryValue()
+data class Sub(override val l: ProgramValue, override val r: ProgramValue) : BinaryValue()
+data class Mul(override val l: ProgramValue, override val r: ProgramValue) : BinaryValue()
+data class Div(override val l: ProgramValue, override val r: ProgramValue) : BinaryValue()

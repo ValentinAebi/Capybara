@@ -1,0 +1,16 @@
+package com.github.valentinaebi.capybara.values
+
+val minusOne_int = ConcreteInt32BitsValue(-1)
+val zero_int = ConcreteInt32BitsValue(0)
+val one_int = ConcreteInt32BitsValue(1)
+val two_int = ConcreteInt32BitsValue(2)
+val three_int = ConcreteInt32BitsValue(3)
+val four_int = ConcreteInt32BitsValue(4)
+val five_int = ConcreteInt32BitsValue(5)
+val zero_long = ConcreteLongValue(0)
+val one_long = ConcreteLongValue(1)
+val zero_float = ConcreteFloatValue(0f)
+val one_float = ConcreteFloatValue(1f)
+val two_float = ConcreteFloatValue(2f)
+val zero_double = ConcreteDoubleValue(0.0)
+val one_double = ConcreteDoubleValue(1.0)

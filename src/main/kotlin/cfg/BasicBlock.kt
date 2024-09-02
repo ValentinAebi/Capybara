@@ -1,7 +1,7 @@
 package com.github.valentinaebi.capybara.cfg
 
 import com.github.valentinaebi.capybara.API_LEVEL
-import com.github.valentinaebi.capybara.SymbolicInterpreter
+import com.github.valentinaebi.capybara.execution.SymbolicInterpreter
 import com.github.valentinaebi.capybara.types.SubtypingRelation
 import com.github.valentinaebi.capybara.types.Type
 import com.github.valentinaebi.capybara.values.ProgramValue

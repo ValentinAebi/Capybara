@@ -1,6 +1,8 @@
 package com.github.valentinaebi.capybara.execution
 
+import com.github.valentinaebi.capybara.solver.ConstraintsRepository
 import com.github.valentinaebi.capybara.values.Add
+import com.github.valentinaebi.capybara.values.AtomicSymbolicValue
 import com.github.valentinaebi.capybara.values.ConcreteDoubleValue
 import com.github.valentinaebi.capybara.values.ConcreteFloatValue
 import com.github.valentinaebi.capybara.values.ConcreteInt32BitsValue
@@ -16,8 +18,9 @@ import com.github.valentinaebi.capybara.values.RawValueType.Float
 import com.github.valentinaebi.capybara.values.RawValueType.Int32
 import com.github.valentinaebi.capybara.values.RawValueType.Long
 import com.github.valentinaebi.capybara.values.Sub
+import com.github.valentinaebi.capybara.values.valueForType
 
-fun ProgramValue.negated(): ProgramValue {
+operator fun ProgramValue.unaryMinus(): ProgramValue {
     return when (this) {
         is ConcreteInt32BitsValue -> ConcreteInt32BitsValue(-this.value)
         is ConcreteLongValue -> ConcreteLongValue(-this.value)
@@ -27,7 +30,7 @@ fun ProgramValue.negated(): ProgramValue {
     }
 }
 
-fun ProgramValue.plus(r: ProgramValue): ProgramValue {
+operator fun ProgramValue.plus(r: ProgramValue): ProgramValue {
     val l = this
     require(l.rawValueType == r.rawValueType)
     if (l is ConcreteValue && r is ConcreteValue) {
@@ -42,12 +45,12 @@ fun ProgramValue.plus(r: ProgramValue): ProgramValue {
     return when {
         l.hasValue(0) -> r
         r.hasValue(0) -> l
-        r is Negated -> l.minus(r.negated)
+        r is Negated -> l - r.negated
         else -> Add(l, r)
     }
 }
 
-fun ProgramValue.minus(r: ProgramValue): ProgramValue {
+operator fun ProgramValue.minus(r: ProgramValue): ProgramValue {
     val l = this
     require(l.rawValueType == r.rawValueType)
     if (l is ConcreteValue && r is ConcreteValue) {
@@ -61,14 +64,14 @@ fun ProgramValue.minus(r: ProgramValue): ProgramValue {
     }
     return when {
         l == r -> valueForType(l.rawValueType, 0)
-        l.hasValue(0) -> r.negated()
+        l.hasValue(0) -> -r
         r.hasValue(0) -> l
-        r is Negated -> l.plus(r.negated)
+        r is Negated -> l + r.negated
         else -> Sub(l, r)
     }
 }
 
-fun ProgramValue.times(r: ProgramValue): ProgramValue {
+operator fun ProgramValue.times(r: ProgramValue): ProgramValue {
     val l = this
     require(l.rawValueType == r.rawValueType)
     if (l is ConcreteValue && r is ConcreteValue) {
@@ -85,13 +88,13 @@ fun ProgramValue.times(r: ProgramValue): ProgramValue {
         l.hasValue(0) -> l
         l.hasValue(1) -> r
         r.hasValue(1) -> l
-        l.hasValue(-1) -> r.negated()
-        r.hasValue(-1) -> l.negated()
+        l.hasValue(-1) -> -r
+        r.hasValue(-1) -> -l
         else -> Mul(l, r)
     }
 }
 
-fun ProgramValue.divBy(r: ProgramValue): ProgramValue {
+operator fun ProgramValue.div(r: ProgramValue): ProgramValue {
     val l = this
     require(l.rawValueType == r.rawValueType)
     if (l is ConcreteValue && r is ConcreteValue) {
@@ -105,24 +108,48 @@ fun ProgramValue.divBy(r: ProgramValue): ProgramValue {
     }
     return when {
         l.hasValue(0) || r.hasValue(1) -> l
-        r.hasValue(-1) -> l.negated()
+        r.hasValue(-1) -> -l
         l == r -> valueForType(l.rawValueType, 1)
         else -> Div(l, r)
     }
 }
 
+fun mkInt32(v: ProgramValue, constraintsRepository: ConstraintsRepository): ProgramValue =
+    convert(Int32, v, constraintsRepository) {
+        ConcreteInt32BitsValue(it.toInt())
+    }
+
+fun mkLong(v: ProgramValue, constraintsRepository: ConstraintsRepository): ProgramValue =
+    convert(Long, v, constraintsRepository) {
+        ConcreteLongValue(it.toLong())
+    }
+
+fun mkFloat(v: ProgramValue, constraintsRepository: ConstraintsRepository): ProgramValue =
+    convert(Float, v, constraintsRepository) {
+        ConcreteFloatValue(it.toFloat())
+    }
+
+fun mkDouble(v: ProgramValue, constraintsRepository: ConstraintsRepository): ProgramValue =
+    convert(Double, v, constraintsRepository) {
+        ConcreteDoubleValue(it.toDouble())
+    }
+
+private inline fun convert(
+    rawValueType: RawValueType,
+    v: ProgramValue,
+    constraintsRepository: ConstraintsRepository,
+    valueCreator: (Number) -> ProgramValue
+): ProgramValue {
+    if (v is ConcreteValue) {
+        return valueCreator(v.value)
+    }
+    val newValue = AtomicSymbolicValue(rawValueType)
+    constraintsRepository.addEqualityConstraint(newValue, v)
+    return newValue
+}
+
 
 private fun ProgramValue.hasValue(n: Number): Boolean = this is ConcreteValue && this.value == n
-
-private fun valueForType(rawValueType: RawValueType, value: Number): ProgramValue {
-    return when (rawValueType) {
-        Int32 -> ConcreteInt32BitsValue(value.toInt())
-        Long -> ConcreteLongValue(value.toLong())
-        Float -> ConcreteFloatValue(value.toFloat())
-        Double -> ConcreteDoubleValue(value.toDouble())
-        else -> throw IllegalArgumentException("unexpected: $rawValueType")
-    }
-}
 
 private inline fun performBinaryOp(
     int32Func: (Int, Int) -> Int,

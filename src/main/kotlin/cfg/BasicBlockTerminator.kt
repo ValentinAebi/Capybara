@@ -1,7 +1,5 @@
 package com.github.valentinaebi.capybara.cfg
 
-import com.github.valentinaebi.capybara.values.ValuePredicate
-
 sealed interface BasicBlockTerminator {
     fun resolve(resolver: Map<BasicBlock, BasicBlock>)
     fun fullDescr(): String
@@ -32,7 +30,7 @@ class SingleSuccessorTerminator(private var _successor: BasicBlock) : BasicBlock
 }
 
 class IteTerminator(
-    val cond: ValuePredicate,
+    val cond: OperandStackPredicate,
     private var _succIfTrue: BasicBlock,
     private var _succIfFalse: BasicBlock
 ) : BasicBlockTerminator {

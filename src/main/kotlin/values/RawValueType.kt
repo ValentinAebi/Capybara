@@ -1,5 +1,6 @@
 package com.github.valentinaebi.capybara.values
 
+import com.github.valentinaebi.capybara.values.RawValueType.Int32
 import org.objectweb.asm.Type.*
 
 enum class RawValueType(val size: Int) {
@@ -23,6 +24,21 @@ enum class RawValueType(val size: Int) {
             }
         }
 
+        fun fromDescriptor(descriptor: String): RawValueType {
+            val sort = getType(descriptor).sort
+            return fromAsmSort(sort)
+        }
+
     }
 
+}
+
+fun valueForType(rawValueType: RawValueType, value: Number): ProgramValue {
+    return when (rawValueType) {
+        Int32 -> ConcreteInt32BitsValue(value.toInt())
+        RawValueType.Long -> ConcreteLongValue(value.toLong())
+        RawValueType.Float -> ConcreteFloatValue(value.toFloat())
+        RawValueType.Double -> ConcreteDoubleValue(value.toDouble())
+        else -> throw IllegalArgumentException("unexpected: $rawValueType")
+    }
 }

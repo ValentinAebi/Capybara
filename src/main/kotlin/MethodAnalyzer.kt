@@ -10,7 +10,6 @@ import com.github.valentinaebi.capybara.cfg.ReturnTerminator
 import com.github.valentinaebi.capybara.cfg.SingleSuccessorTerminator
 import com.github.valentinaebi.capybara.cfg.TableSwitchTerminator
 import com.github.valentinaebi.capybara.cfg.ThrowTerminator
-import com.github.valentinaebi.capybara.types.ReferenceType
 import com.github.valentinaebi.capybara.cfg.BinaryOperandStackPredicate.Equal
 import com.github.valentinaebi.capybara.cfg.BinaryOperandStackPredicate.GreaterThan
 import com.github.valentinaebi.capybara.cfg.BinaryOperandStackPredicate.LessThan
@@ -356,7 +355,7 @@ class MethodAnalyzer(
             computeCatchIfAbsent(it, catches, tryBlockToParent, labelsToBasicBlock)
         }
         val catch = Catch(
-            ReferenceType(tryCatchBlockNode.type),
+            tryCatchBlockNode.type,
             labelsToBasicBlock[tryCatchBlockNode.handler.label]!!,
             maybeParentCatch,
             childrenList,

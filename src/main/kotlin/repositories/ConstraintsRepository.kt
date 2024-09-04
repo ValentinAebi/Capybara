@@ -1,4 +1,4 @@
-package com.github.valentinaebi.capybara.solver
+package com.github.valentinaebi.capybara.repositories
 
 import com.github.valentinaebi.capybara.values.AtomicSymbolicValue
 import com.github.valentinaebi.capybara.values.ConcreteValue

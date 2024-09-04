@@ -1,5 +1,6 @@
 package com.github.valentinaebi.capybara.values
 
+import com.github.valentinaebi.capybara.TypeDescriptor
 import com.github.valentinaebi.capybara.values.RawValueType.Int32
 import org.objectweb.asm.Type.*
 
@@ -24,7 +25,7 @@ enum class RawValueType(val size: Int) {
             }
         }
 
-        fun fromDescriptor(descriptor: String): RawValueType {
+        fun fromDescriptor(descriptor: TypeDescriptor): RawValueType {
             val sort = getType(descriptor).sort
             return fromAsmSort(sort)
         }

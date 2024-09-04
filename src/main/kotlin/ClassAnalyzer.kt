@@ -11,7 +11,7 @@ class ClassAnalyzer(val methodsPerClasses: MutableMap<String, List<Method>>) : C
     override fun visitMethod(
         access: Int,
         name: String?,
-        descriptor: String?,
+        descriptor: TypeDescriptor?,
         signature: String?,
         exceptions: Array<out String>?
     ): MethodVisitor {

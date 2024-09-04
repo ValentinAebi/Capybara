@@ -1,11 +1,14 @@
 package com.github.valentinaebi.capybara.execution
 
 import com.github.valentinaebi.capybara.API_LEVEL
+import com.github.valentinaebi.capybara.TypeDescriptor
+import com.github.valentinaebi.capybara.checks.Reporter
+import com.github.valentinaebi.capybara.checks.checkCastPrecondition
 import com.github.valentinaebi.capybara.repositories.ArraysRepository
+import com.github.valentinaebi.capybara.repositories.ConstraintsRepository
 import com.github.valentinaebi.capybara.repositories.OwnedObjectsRepository
 import com.github.valentinaebi.capybara.repositories.StringsRepository
-import com.github.valentinaebi.capybara.solver.ConstraintsRepository
-import com.github.valentinaebi.capybara.types.ReferenceType
+import com.github.valentinaebi.capybara.repositories.TypesRepository
 import com.github.valentinaebi.capybara.values.AtomicSymbolicValue
 import com.github.valentinaebi.capybara.values.ConcreteDoubleValue
 import com.github.valentinaebi.capybara.values.ConcreteFloatValue
@@ -42,19 +45,23 @@ import org.objectweb.asm.tree.AbstractInsnNode
 import org.objectweb.asm.tree.FieldInsnNode
 import org.objectweb.asm.tree.IntInsnNode
 import org.objectweb.asm.tree.LdcInsnNode
+import org.objectweb.asm.tree.TypeInsnNode
 import org.objectweb.asm.tree.analysis.Interpreter
 import org.objectweb.asm.util.Printer
 
 class SymbolicInterpreter(
-    private val constraintsRepository: ConstraintsRepository,
-    private val stringsRepository: StringsRepository,
-    private val ownedObjectsRepository: OwnedObjectsRepository,
-    private val arraysRepository: ArraysRepository
+    private val reporter: Reporter,                             // aliasable
+    private val stringsRepository: StringsRepository,           // aliasable
+    private val constraintsRepository: ConstraintsRepository,   // non aliasable
+    private val ownedObjectsRepository: OwnedObjectsRepository, // non aliasable
+    private val arraysRepository: ArraysRepository,             // non aliasable
+    private val typesRepository: TypesRepository                // non aliasable
 ) : Interpreter<ProgramValue>(API_LEVEL) {
 
-    val raisedException: ReferenceType? get() = _raisedException
-    private var _raisedException: ReferenceType? = null
+    val raisedException: TypeDescriptor? get() = _raisedException
+    private var _raisedException: TypeDescriptor? = null
 
+    fun deepCopy(): SymbolicInterpreter = TODO()
 
     override fun newValue(type: Type?): ProgramValue {
         return if (type == null) {
@@ -107,7 +114,13 @@ class SymbolicInterpreter(
                 return AtomicSymbolicValue(RawValueType.fromAsmSort(sort))
             }
 
-            Opcodes.NEW -> AtomicSymbolicValue(Reference)
+            Opcodes.NEW -> {
+                val typeDescriptor = (insn as TypeInsnNode).desc
+                val newObj = AtomicSymbolicValue(Reference)
+                typesRepository.saveType(newObj, typeDescriptor, isExactType = true)
+                newObj
+            }
+
             else -> throw AssertionError("unexpected opcode: ${Printer.OPCODES[opcode]}")
         }
     }
@@ -126,11 +139,11 @@ class SymbolicInterpreter(
             Opcodes.I2L -> mkLong(value, constraintsRepository)
             Opcodes.I2F, Opcodes.L2F -> convertIfConcrete(value, Float)
             Opcodes.I2D, Opcodes.L2D -> convertIfConcrete(value, Double)
-            Opcodes.L2I -> mkInt32(value, constraintsRepository)
+            Opcodes.L2I -> convertIfConcrete(value, Int32)
             Opcodes.F2I, Opcodes.D2I -> convertIfConcrete(value, Int32)
             Opcodes.F2L, Opcodes.D2L -> convertIfConcrete(value, Long)
             Opcodes.F2D -> mkDouble(value, constraintsRepository)
-            Opcodes.D2F -> mkFloat(value, constraintsRepository)
+            Opcodes.D2F -> convertIfConcrete(value, Float)
             Opcodes.I2B -> truncateIfConcrete(value) { it.toByte() }
             Opcodes.I2C -> truncateIfConcrete(value) { it.toChar().code }
             Opcodes.I2S -> truncateIfConcrete(value) { it.toShort() }
@@ -143,19 +156,27 @@ class SymbolicInterpreter(
             }
 
             Opcodes.GETFIELD -> {
+                // TODO check that value != null
                 val fieldInsnNode = insn as FieldInsnNode
                 ownedObjectsRepository.getFieldValue(value, fieldInsnNode.name)
                     ?: AtomicSymbolicValue(RawValueType.fromDescriptor(fieldInsnNode.desc))
             }
 
             Opcodes.NEWARRAY, Opcodes.ANEWARRAY -> {
-                // TODO save representation of known arrays
+                // TODO check that length >= 0
+                val typeDescriptor = insn.takeIf { opcode == Opcodes.ANEWARRAY }?.let { (it as TypeInsnNode).desc }
                 val array = AtomicSymbolicValue(Reference)
-                arraysRepository.saveArrayOfLen(array, value)
+                arraysRepository.saveOwnedArrayOfLenAndElemType(array, value, typeDescriptor)
                 array
             }
 
             Opcodes.ARRAYLENGTH -> arraysRepository.lengthOf(value) ?: AtomicSymbolicValue(Int32)
+            Opcodes.CHECKCAST -> {
+                val desiredType = (insn as TypeInsnNode).desc
+                checkCastPrecondition(value, desiredType, typesRepository, reporter)
+                value
+            }
+
             else -> TODO()
         }
     }

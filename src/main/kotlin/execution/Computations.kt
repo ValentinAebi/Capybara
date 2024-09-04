@@ -1,6 +1,6 @@
 package com.github.valentinaebi.capybara.execution
 
-import com.github.valentinaebi.capybara.solver.ConstraintsRepository
+import com.github.valentinaebi.capybara.repositories.ConstraintsRepository
 import com.github.valentinaebi.capybara.values.Add
 import com.github.valentinaebi.capybara.values.AtomicSymbolicValue
 import com.github.valentinaebi.capybara.values.ConcreteDoubleValue

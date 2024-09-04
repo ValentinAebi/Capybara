@@ -1,9 +1,10 @@
 package com.github.valentinaebi.capybara.cfg
 
-import com.github.valentinaebi.capybara.types.Type
+import com.github.valentinaebi.capybara.TypeDescriptor
+
 
 class Catch(
-    val handledExceptionType: Type,
+    val handledExceptionType: TypeDescriptor,
     private var _handler: BasicBlock,
     val parentCatch: Catch?,
     val childrenCatches: List<Catch>,

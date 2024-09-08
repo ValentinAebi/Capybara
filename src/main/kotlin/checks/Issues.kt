@@ -1,7 +1,7 @@
 package com.github.valentinaebi.capybara.checks
 
-import com.github.valentinaebi.capybara.cfg.Class
-import com.github.valentinaebi.capybara.cfg.Method
+import com.github.valentinaebi.capybara.programstruct.Class
+import com.github.valentinaebi.capybara.programstruct.Method
 
 data class Issue(
     val clazz: Class,

@@ -17,50 +17,55 @@ data object ThrowTerminator : BasicBlockTerminator {
     override fun fullDescr(): String = "throw"
 }
 
-class SingleSuccessorTerminator(private var _successor: BasicBlock) : BasicBlockTerminator {
+class SingleSuccessorTerminator(successorBlock: BasicBlock) : BasicBlockTerminator {
 
-    val successor: BasicBlock get() = _successor
+    var successor: BasicBlock = successorBlock
+        private set
 
     override fun toString(): String = "goto $successor"
     override fun fullDescr(): String = "goto $successor"
 
     override fun resolve(resolver: Map<BasicBlock, BasicBlock>) {
-        _successor = resolver[_successor]!!
+        successor = resolver[successor]!!
     }
 }
 
 class IteTerminator(
     val cond: OperandStackPredicate,
-    private var _succIfTrue: BasicBlock,
-    private var _succIfFalse: BasicBlock
+    successorBlockIfTrue: BasicBlock,
+    successorBlockIfFalse: BasicBlock
 ) : BasicBlockTerminator {
 
-    val succIfTrue get() = _succIfTrue
-    val succIfFalse get() = _succIfFalse
+    var successorIfTrue = successorBlockIfTrue
+        private set
+    var successorIfFalse = successorBlockIfFalse
+        private set
 
-    override fun toString(): String = "$succIfTrue or $succIfFalse"
-    override fun fullDescr(): String = "if $cond then $succIfTrue else $succIfFalse"
+    override fun toString(): String = "$successorIfTrue or $successorIfFalse"
+    override fun fullDescr(): String = "if $cond then $successorIfTrue else $successorIfFalse"
 
     override fun resolve(resolver: Map<BasicBlock, BasicBlock>) {
-        _succIfTrue = resolver[_succIfTrue]!!
-        _succIfFalse = resolver[_succIfFalse]!!
+        successorIfTrue = resolver[successorIfTrue]!!
+        successorIfFalse = resolver[successorIfFalse]!!
     }
 }
 
 class TableSwitchTerminator(
     val minKey: Int,
-    private var _cases: List<BasicBlock>,
-    private var _default: BasicBlock?
+    casesBlocks: List<BasicBlock>,
+    defaultBlock: BasicBlock?
 ) : BasicBlockTerminator {
 
-    val cases: List<BasicBlock> get() = _cases
-    val default: BasicBlock? get() = _default
+    var cases: List<BasicBlock> = casesBlocks
+        private set
+    var default: BasicBlock? = defaultBlock
+        private set
 
     override fun toString(): String = "tableswitch"
     override fun fullDescr(): String {
         val sb = StringBuilder()
         sb.append("tableswitch\n")
-        for ((idx, block) in cases.withIndex()){
+        for ((idx, block) in cases.withIndex()) {
             val key = minKey + idx
             sb.append(" ").append(key).append(" -> ").append(block).append("\n")
         }
@@ -69,24 +74,26 @@ class TableSwitchTerminator(
     }
 
     override fun resolve(resolver: Map<BasicBlock, BasicBlock>) {
-        _cases = _cases.map { resolver[it]!! }
-        _default = resolver[_default]!!
+        cases = cases.map { resolver[it]!! }
+        default = resolver[default]!!
     }
 }
 
 class LookupSwitchTerminator(
-    private var _cases: Map<Any, BasicBlock>,
-    private var _default: BasicBlock?
+    casesBlocks: Map<Any, BasicBlock>,
+    defaultBlock: BasicBlock?
 ) : BasicBlockTerminator {
 
-    val keys: Map<Any, BasicBlock> get() = _cases
-    val default: BasicBlock? get() = _default
+    var cases: Map<Any, BasicBlock> = casesBlocks
+        private set
+    var default: BasicBlock? = defaultBlock
+        private set
 
     override fun toString(): String = "lookupswitch"
     override fun fullDescr(): String {
         val sb = StringBuilder()
         sb.append("lookupswitch\n")
-        for ((key, block) in keys){
+        for ((key, block) in cases) {
             sb.append(" ").append(key).append(" -> ").append(block).append("\n")
         }
         sb.append(" default -> ").append(default).append("\n")
@@ -94,7 +101,7 @@ class LookupSwitchTerminator(
     }
 
     override fun resolve(resolver: Map<BasicBlock, BasicBlock>) {
-        _cases = _cases.map { (pv, bb) -> pv to resolver[bb]!! }.toMap()
-        _default = resolver[_default]!!
+        cases = cases.map { (pv, bb) -> pv to resolver[bb]!! }.toMap()
+        default = resolver[default]!!
     }
 }

@@ -1,3 +1,4 @@
+package com.github.valentinaebi.example.hello;
 
 class Hello {
 

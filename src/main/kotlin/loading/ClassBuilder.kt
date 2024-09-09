@@ -53,8 +53,8 @@ class ClassBuilder(private val subtypingMap: SubtypingRelationBuilder) :
         val methodNode = MethodNode(access, name, descriptor, signature, exceptions)
         val mayBeOverridden =
             methodsMayBeOverriden && (access and (Opcodes.ACC_FINAL or Opcodes.ACC_STATIC or Opcodes.ACC_PRIVATE) == 0)
-        methods[name!!] = Method(methodNode, mayBeOverridden)
-        return MethodBuilder(methodNode)
+        val hasReceiver = (access and Opcodes.ACC_STATIC) == 0
+        return MethodBuilder(methodNode, mayBeOverridden, hasReceiver, methods)
     }
 
     override fun visitField(

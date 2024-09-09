@@ -2,8 +2,10 @@ package com.github.valentinaebi.capybara.values
 
 import com.github.valentinaebi.capybara.InternalName
 import io.ksmt.KContext
+import io.ksmt.expr.KExpr
 import io.ksmt.expr.KInt32NumExpr
 import io.ksmt.expr.KInt64NumExpr
+import io.ksmt.sort.KBoolSort
 import org.objectweb.asm.Type
 
 class ValuesCreator(private val ctx: KContext) {
@@ -17,41 +19,42 @@ class ValuesCreator(private val ctx: KContext) {
     fun mkFloatValue(v: Float): FloatValue = with(ctx) { FloatValue(v.expr) }
     fun mkDoubleValue(v: Double): DoubleValue = with(ctx) { DoubleValue(v.expr) }
 
-    fun mkSymbolicInt32(): Int32Value = with(ctx) {
-        val namePrefix = "sv#${nextSvIdx++}_"
+    fun mkSymbolicInt32(idAnnot: String = ""): Int32Value = with(ctx) {
+        val namePrefix = "sv#${nextSvIdx++}_" + idAnnot
         Int32Value(mkConst(namePrefix + "i32", intSort))
     }
 
-    fun mkSymbolicLong(): LongValue = with(ctx) {
-        val namePrefix = "sv#${nextSvIdx++}_"
+    fun mkSymbolicLong(idAnnot: String = ""): LongValue = with(ctx) {
+        val namePrefix = "sv#${nextSvIdx++}_" + idAnnot
         LongValue(mkConst(namePrefix + "i64", intSort))
     }
 
-    fun mkSymbolicFloat(): FloatValue = with(ctx) {
-        val namePrefix = "sv#${nextSvIdx++}_"
+    fun mkSymbolicFloat(idAnnot: String = ""): FloatValue = with(ctx) {
+        val namePrefix = "sv#${nextSvIdx++}_" + idAnnot
         FloatValue(mkConst(namePrefix + "f32", fp32Sort))
     }
 
-    fun mkSymbolicDouble(): DoubleValue = with(ctx) {
-        val namePrefix = "sv#${nextSvIdx++}_"
+    fun mkSymbolicDouble(idAnnot: String = ""): DoubleValue = with(ctx) {
+        val namePrefix = "sv#${nextSvIdx++}_" + idAnnot
         DoubleValue(mkConst(namePrefix + "f64", fp64Sort))
     }
 
-    fun mkSymbolicRef(): ReferenceValue = with(ctx) {
-        val namePrefix = "sv#${nextSvIdx++}_"
+    fun mkSymbolicRef(idAnnot: String = ""): ReferenceValue = with(ctx) {
+        val namePrefix = "sv#${nextSvIdx++}_" + idAnnot
         ReferenceValue(mkConst(namePrefix + "ref", bv32Sort))
     }
 
-    fun mkSymbolicValue(asmSort: Int): ProgramValue = when (asmSort) {
-        Type.BOOLEAN, Type.CHAR, Type.BYTE, Type.SHORT, Type.INT -> mkSymbolicInt32()
-        Type.LONG -> mkSymbolicLong()
-        Type.FLOAT -> mkSymbolicFloat()
-        Type.DOUBLE -> mkSymbolicDouble()
-        Type.ARRAY, Type.OBJECT -> mkSymbolicRef()
+    fun mkSymbolicValue(asmSort: Int, idAnnot: String = ""): ProgramValue = when (asmSort) {
+        Type.BOOLEAN, Type.CHAR, Type.BYTE, Type.SHORT, Type.INT -> mkSymbolicInt32(idAnnot)
+        Type.LONG -> mkSymbolicLong(idAnnot)
+        Type.FLOAT -> mkSymbolicFloat(idAnnot)
+        Type.DOUBLE -> mkSymbolicDouble(idAnnot)
+        Type.ARRAY, Type.OBJECT -> mkSymbolicRef(idAnnot)
         else -> throw IllegalArgumentException("unexpected asmSort: $asmSort")
     }
 
-    fun mkSymbolicValue(desc: InternalName): ProgramValue = mkSymbolicValue(Type.getType(desc).sort)
+    fun mkSymbolicValue(desc: InternalName, idAnnot: String = ""): ProgramValue =
+        mkSymbolicValue(Type.getType(desc).sort, idAnnot)
 
     fun arrayLen(array: ProgramValue): ProgramValue {
         val lenOfArray = ctx.mkApp(arrayLenFunc, listOf(array.ksmtValue))
@@ -88,6 +91,79 @@ class ValuesCreator(private val ctx: KContext) {
         return when (iVal) {
             is KInt64NumExpr -> mkDoubleValue(iVal.value.toDouble())
             else -> mkSymbolicDouble()
+        }
+    }
+
+    infix fun Int32Value.eq(r: Int32Value): KExpr<KBoolSort> {
+        val l = this
+        return with(ctx) { l.ksmtValue eq r.ksmtValue }
+    }
+
+    infix fun LongValue.eq(r: LongValue): KExpr<KBoolSort> {
+        val l = this
+        return with(ctx) { l.ksmtValue eq r.ksmtValue }
+    }
+
+    infix fun FloatValue.eq(r: FloatValue): KExpr<KBoolSort> {
+        val l = this
+        return with(ctx) { l.ksmtValue eq r.ksmtValue }
+    }
+
+    infix fun DoubleValue.eq(r: DoubleValue): KExpr<KBoolSort> {
+        val l = this
+        return with(ctx) { l.ksmtValue eq r.ksmtValue }
+    }
+
+    infix fun ReferenceValue.eq(r: ReferenceValue): KExpr<KBoolSort> {
+        val l = this
+        return with(ctx) { l.ksmtValue eq r.ksmtValue }
+    }
+
+    fun isZeroConstraint(v: NumericValue<*>): KExpr<KBoolSort> {
+        return when (v) {
+            is Int32Value -> v eq zero_int
+            is LongValue -> v eq zero_long
+            is FloatValue -> v eq zero_float
+            is DoubleValue -> v eq zero_double
+        }
+    }
+
+    fun isLessThanZeroConstraint(v: NumericValue<*>): KExpr<KBoolSort> {
+        return when (v) {
+            is Int32Value -> ctx.mkArithLt(v.ksmtValue, zero_int.ksmtValue)
+            is LongValue -> ctx.mkArithLt(v.ksmtValue, zero_long.ksmtValue)
+            is FloatValue -> ctx.mkFpLessExpr(v.ksmtValue, zero_float.ksmtValue)
+            is DoubleValue -> ctx.mkFpLessExpr(v.ksmtValue, zero_double.ksmtValue)
+        }
+    }
+
+    fun isGreaterThanZeroConstraint(v: NumericValue<*>): KExpr<KBoolSort> {
+        return when (v) {
+            is Int32Value -> ctx.mkArithGt(v.ksmtValue, zero_int.ksmtValue)
+            is LongValue -> ctx.mkArithGt(v.ksmtValue, zero_long.ksmtValue)
+            is FloatValue -> ctx.mkFpGreaterExpr(v.ksmtValue, zero_float.ksmtValue)
+            is DoubleValue -> ctx.mkFpGreaterExpr(v.ksmtValue, zero_double.ksmtValue)
+        }
+    }
+
+    fun lessThanConstraint(l: NumericValue<*>, r: NumericValue<*>): KExpr<KBoolSort> {
+        return when {
+            l is Int32Value && r is Int32Value -> ctx.mkArithLt(l.ksmtValue, r.ksmtValue)
+            l is LongValue && r is LongValue -> ctx.mkArithLt(l.ksmtValue, r.ksmtValue)
+            l is FloatValue && r is FloatValue -> ctx.mkFpLessExpr(l.ksmtValue, r.ksmtValue)
+            l is DoubleValue && r is DoubleValue -> ctx.mkFpLessExpr(l.ksmtValue, r.ksmtValue)
+            else -> throw AssertionError("wrong operand types: ${l::class.simpleName} < ${r::class.simpleName}")
+        }
+    }
+
+    fun areEqualConstraint(l: ProgramValue, r: ProgramValue): KExpr<KBoolSort> {
+        return when {
+            l is Int32Value && r is Int32Value -> l eq r
+            l is LongValue && r is LongValue -> l eq r
+            l is FloatValue && r is FloatValue -> l eq r
+            l is DoubleValue && r is DoubleValue -> l eq r
+            l is ReferenceValue && r is ReferenceValue -> l eq r
+            else -> throw AssertionError("wrong operand types: ${l::class.simpleName} == ${r::class.simpleName}")
         }
     }
 

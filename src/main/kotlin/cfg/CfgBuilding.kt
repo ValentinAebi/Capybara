@@ -1,20 +1,11 @@
 @file:OptIn(ExperimentalContracts::class)
 
-package com.github.valentinaebi.capybara.symbolicexecution
+package com.github.valentinaebi.capybara.cfg
 
-import com.github.valentinaebi.capybara.cfg.BasicBlock
-import com.github.valentinaebi.capybara.cfg.BasicBlockTerminator
+import com.github.valentinaebi.capybara.UNKNOWN_LINE_NUMBER
 import com.github.valentinaebi.capybara.cfg.BinaryOperandStackPredicate.Equal
 import com.github.valentinaebi.capybara.cfg.BinaryOperandStackPredicate.GreaterThan
 import com.github.valentinaebi.capybara.cfg.BinaryOperandStackPredicate.LessThan
-import com.github.valentinaebi.capybara.cfg.Catch
-import com.github.valentinaebi.capybara.cfg.Cfg
-import com.github.valentinaebi.capybara.cfg.IteTerminator
-import com.github.valentinaebi.capybara.cfg.LookupSwitchTerminator
-import com.github.valentinaebi.capybara.cfg.ReturnTerminator
-import com.github.valentinaebi.capybara.cfg.SingleSuccessorTerminator
-import com.github.valentinaebi.capybara.cfg.TableSwitchTerminator
-import com.github.valentinaebi.capybara.cfg.ThrowTerminator
 import com.github.valentinaebi.capybara.cfg.UnaryOperandStackPredicate.GreaterThanZero
 import com.github.valentinaebi.capybara.cfg.UnaryOperandStackPredicate.IsNull
 import com.github.valentinaebi.capybara.cfg.UnaryOperandStackPredicate.IsZero
@@ -39,7 +30,6 @@ import kotlin.contracts.contract
 
 fun buildCfg(methodNode: MethodNode): Cfg {
 
-    val methodName = methodNode.name
     val instructions = methodNode.instructions.toArray()
     val tryCatchBlocks = methodNode.tryCatchBlocks
 
@@ -210,7 +200,7 @@ private fun buildBasicBlocks(
     var currInsn: AbstractInsnNode? = firstInstruction
     var currInsnIdx = 0
     var currCatch: Catch? = null
-    var currLineNumber = -1
+    var currLineNumber = UNKNOWN_LINE_NUMBER
 
     while (currInsn != null) {
 

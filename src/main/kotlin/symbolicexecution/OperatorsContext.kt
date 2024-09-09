@@ -4,6 +4,7 @@ import com.github.valentinaebi.capybara.values.DoubleValue
 import com.github.valentinaebi.capybara.values.FloatValue
 import com.github.valentinaebi.capybara.values.Int32Value
 import com.github.valentinaebi.capybara.values.LongValue
+import com.github.valentinaebi.capybara.values.NumericValue
 import com.github.valentinaebi.capybara.values.ProgramValue
 import com.github.valentinaebi.capybara.values.ReferenceValue
 import io.ksmt.KContext

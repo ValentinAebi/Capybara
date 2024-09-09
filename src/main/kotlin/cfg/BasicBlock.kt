@@ -1,6 +1,7 @@
 package com.github.valentinaebi.capybara.cfg
 
 import com.github.valentinaebi.capybara.API_LEVEL
+import com.github.valentinaebi.capybara.UNKNOWN_LINE_NUMBER
 import com.github.valentinaebi.capybara.symbolicexecution.SymbolicInterpreter
 import com.github.valentinaebi.capybara.values.ProgramValue
 import org.objectweb.asm.tree.AbstractInsnNode
@@ -22,7 +23,7 @@ class BasicBlock(
     fun fullDescr(): String {
         val printer = BasicBlockTextifier()
         val visitor = TraceMethodVisitor(printer)
-        var currLine = -1
+        var currLine = UNKNOWN_LINE_NUMBER
         for ((insn, lineIdx) in insnList) {
             if (lineIdx != currLine) {
                 printer.markNewLine(lineIdx)
@@ -47,9 +48,6 @@ class BasicBlock(
     ) {
         for ((insn, _) in insnList) {
             frame.execute(insn, interpreter)
-            if (interpreter.raisedException != null) {
-                break
-            }
         }
     }
 

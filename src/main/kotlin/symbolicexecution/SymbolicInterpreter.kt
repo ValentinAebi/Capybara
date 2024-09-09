@@ -3,10 +3,10 @@ package com.github.valentinaebi.capybara.symbolicexecution
 import com.github.valentinaebi.capybara.API_LEVEL
 import com.github.valentinaebi.capybara.InternalName
 import com.github.valentinaebi.capybara.checks.Reporter
-import com.github.valentinaebi.capybara.solving.Solver
 import com.github.valentinaebi.capybara.values.Int32Value
 import com.github.valentinaebi.capybara.values.LongValue
 import com.github.valentinaebi.capybara.values.ProgramValue
+import com.github.valentinaebi.capybara.values.ReferenceValue
 import com.github.valentinaebi.capybara.values.ValuesCreator
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.Type
@@ -15,19 +15,19 @@ import org.objectweb.asm.tree.FieldInsnNode
 import org.objectweb.asm.tree.IntInsnNode
 import org.objectweb.asm.tree.InvokeDynamicInsnNode
 import org.objectweb.asm.tree.LdcInsnNode
+import org.objectweb.asm.tree.MethodInsnNode
 import org.objectweb.asm.tree.TypeInsnNode
 import org.objectweb.asm.tree.analysis.Interpreter
 import org.objectweb.asm.util.Printer
 
 class SymbolicInterpreter(
     private val reporter: Reporter,
-    private val solver: Solver,
     private val valuesCreator: ValuesCreator,
-    private val operatorsContext: OperatorsContext
+    private val operatorsContext: OperatorsContext,
+    private val checker: Checker
 ) : Interpreter<ProgramValue>(API_LEVEL) {
 
-    val raisedException: InternalName? get() = _raisedException
-    private var _raisedException: InternalName? = null
+    var lineResolver: ((AbstractInsnNode) -> Int)? = null
 
     override fun newValue(type: Type?): ProgramValue {
         return if (type == null) {
@@ -38,7 +38,8 @@ class SymbolicInterpreter(
     }
 
     override fun newOperation(insn: AbstractInsnNode?): ProgramValue {
-        val opcode = insn!!.opcode
+        updateLine(insn!!)
+        val opcode = insn.opcode
         return with(valuesCreator) {
             when (opcode) {
                 Opcodes.ACONST_NULL -> nullValue
@@ -93,13 +94,17 @@ class SymbolicInterpreter(
         }
     }
 
-    override fun copyOperation(insn: AbstractInsnNode?, value: ProgramValue?): ProgramValue = value!!
+    override fun copyOperation(insn: AbstractInsnNode?, value: ProgramValue?): ProgramValue {
+        updateLine(insn!!)
+        return value!!
+    }
 
     override fun unaryOperation(insn: AbstractInsnNode?, value: ProgramValue?): ProgramValue {
+        updateLine(insn!!)
         requireNotNull(value)
         return with(valuesCreator) {
             with(operatorsContext) {
-                val opcode = insn!!.opcode
+                val opcode = insn.opcode
                 when (opcode) {
                     in Opcodes.INEG..Opcodes.DNEG -> -value
                     Opcodes.IINC -> value + one_int
@@ -125,7 +130,7 @@ class SymbolicInterpreter(
                     }
 
                     Opcodes.GETFIELD -> {
-                        // TODO check that value != null
+                        checker.mustBeNonNull(value as ReferenceValue, "field owner might be null")
                         val fieldInsnNode = insn as FieldInsnNode
                         // TODO check if object is owned
                         mkSymbolicValue(fieldInsnNode.desc)
@@ -159,12 +164,13 @@ class SymbolicInterpreter(
     }
 
     override fun binaryOperation(insn: AbstractInsnNode?, l: ProgramValue?, r: ProgramValue?): ProgramValue {
+        updateLine(insn!!)
         requireNotNull(l)
         requireNotNull(r)
         assert(l.size == r.size)
         return with(valuesCreator) {
             with(operatorsContext) {
-                val opcode = insn!!.opcode
+                val opcode = insn.opcode
                 when (opcode) {
                     // TODO check that array is not null
                     // TODO check that index is in bounds
@@ -217,6 +223,7 @@ class SymbolicInterpreter(
         value2: ProgramValue?,
         value3: ProgramValue?
     ): ProgramValue {
+        updateLine(insn!!)
         requireNotNull(value1)
         requireNotNull(value2)
         requireNotNull(value3)
@@ -228,14 +235,21 @@ class SymbolicInterpreter(
     }
 
     override fun naryOperation(insn: AbstractInsnNode?, values: MutableList<out ProgramValue>?): ProgramValue {
+        updateLine(insn!!)
         requireNotNull(values)
         return with(valuesCreator) {
             with(operatorsContext) {
                 // TODO consider inferred method contracts
-                val opcode = insn!!.opcode
+                val opcode = insn.opcode
                 when (opcode) {
                     in Opcodes.INVOKEVIRTUAL..Opcodes.INVOKEINTERFACE -> {
-                        val methodDesc = (insn as TypeInsnNode).desc
+                        if (opcode != Opcodes.INVOKESTATIC) {
+                            checker.mustBeNonNull(
+                                values.first() as ReferenceValue,
+                                "invocation receiver might be null"
+                            )
+                        }
+                        val methodDesc = (insn as MethodInsnNode).desc
                         val retType = Type.getReturnType(methodDesc)
                         if (retType == Type.VOID_TYPE) placeholderValue else mkSymbolicValue(retType.sort)
                     }
@@ -259,6 +273,10 @@ class SymbolicInterpreter(
 
     override fun merge(value1: ProgramValue?, value2: ProgramValue?): ProgramValue {
         throw UnsupportedOperationException("merged is not supposed to be called in ${SymbolicInterpreter::class.simpleName}")
+    }
+
+    private fun updateLine(insn: AbstractInsnNode) {
+        reporter.currentLine = lineResolver!!(insn)
     }
 
 }

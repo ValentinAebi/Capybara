@@ -138,7 +138,7 @@ class Executor(
             UnaryOperandStackPredicate.IsZero -> valuesCreator.isZeroConstraint(value as NumericValue<*>)
             UnaryOperandStackPredicate.LessThanZero -> valuesCreator.isLessThanZeroConstraint(value as NumericValue<*>)
             UnaryOperandStackPredicate.GreaterThanZero -> valuesCreator.isGreaterThanZeroConstraint(value as NumericValue<*>)
-            UnaryOperandStackPredicate.IsNull -> with(valuesCreator) { (value as ReferenceValue) eq nullValue }
+            UnaryOperandStackPredicate.IsNull -> with(valuesCreator) { value.ref() eq nullValue }
         }
     }
 

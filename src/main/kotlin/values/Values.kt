@@ -15,6 +15,12 @@ import org.objectweb.asm.tree.analysis.Value
 sealed interface ProgramValue : Value {
     val ksmtValue: KExpr<*>
     val shortCode: String
+
+    fun int32(): Int32Value = this as Int32Value
+    fun long(): LongValue = this as LongValue
+    fun float(): FloatValue = this as FloatValue
+    fun double(): DoubleValue = this as DoubleValue
+    fun ref(): ReferenceValue = this as ReferenceValue
 }
 
 sealed interface NumericValue<S : KSort> : ProgramValue {

@@ -1,12 +1,10 @@
 package com.github.valentinaebi.capybara.symbolicexecution
 
 import com.github.valentinaebi.capybara.API_LEVEL
-import com.github.valentinaebi.capybara.InternalName
 import com.github.valentinaebi.capybara.checks.Reporter
 import com.github.valentinaebi.capybara.values.Int32Value
 import com.github.valentinaebi.capybara.values.LongValue
 import com.github.valentinaebi.capybara.values.ProgramValue
-import com.github.valentinaebi.capybara.values.ReferenceValue
 import com.github.valentinaebi.capybara.values.ValuesCreator
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.Type
@@ -106,15 +104,18 @@ class SymbolicInterpreter(
             with(operatorsContext) {
                 val opcode = insn.opcode
                 when (opcode) {
-                    in Opcodes.INEG..Opcodes.DNEG -> -value
-                    Opcodes.IINC -> value + one_int
+                    Opcodes.INEG -> -value.int32()
+                    Opcodes.LNEG -> -value.long()
+                    Opcodes.FNEG -> -value.float()
+                    Opcodes.DNEG -> -value.double()
+                    Opcodes.IINC -> value.int32() + one_int
                     // TODO more conversion functions
-                    Opcodes.I2L -> LongValue((value as Int32Value).ksmtValue)
-                    Opcodes.I2F -> int2Float(value as Int32Value)
-                    Opcodes.L2F -> long2Float(value as LongValue)
+                    Opcodes.I2L -> LongValue(value.int32().ksmtValue)
+                    Opcodes.I2F -> int2Float(value.int32())
+                    Opcodes.L2F -> long2Float(value.long())
                     Opcodes.I2D -> mkSymbolicDouble()
                     Opcodes.L2D -> mkSymbolicDouble()
-                    Opcodes.L2I -> Int32Value((value as LongValue).ksmtValue)   // FIXME technically incorrect
+                    Opcodes.L2I -> Int32Value(value.long().ksmtValue)   // FIXME technically incorrect
                     Opcodes.F2I -> mkSymbolicInt32()
                     Opcodes.D2I -> mkSymbolicInt32()
                     Opcodes.F2L -> mkSymbolicLong()
@@ -130,7 +131,7 @@ class SymbolicInterpreter(
                     }
 
                     Opcodes.GETFIELD -> {
-                        checker.mustBeNonNull(value as ReferenceValue, "field owner might be null")
+                        checker.mustBeNonNull(value.ref(), "field owner might be null")
                         val fieldInsnNode = insn as FieldInsnNode
                         // TODO check if object is owned
                         mkSymbolicValue(fieldInsnNode.desc)
@@ -180,11 +181,26 @@ class SymbolicInterpreter(
                     Opcodes.FALOAD -> mkSymbolicFloat()
                     Opcodes.DALOAD -> mkSymbolicDouble()
                     Opcodes.AALOAD -> mkSymbolicRef()
-                    in Opcodes.IADD..Opcodes.DADD -> l + r
-                    in Opcodes.ISUB..Opcodes.DSUB -> l - r
-                    in Opcodes.IMUL..Opcodes.DMUL -> l * r
-                    in Opcodes.IDIV..Opcodes.DDIV -> l / r
-                    in Opcodes.IREM..Opcodes.DREM -> l % r
+                    Opcodes.IADD -> l.int32() + r.int32()
+                    Opcodes.LADD -> l.long() + r.long()
+                    Opcodes.FADD -> l.float() + r.float()
+                    Opcodes.DADD -> l.double() + r.double()
+                    Opcodes.ISUB -> l.int32() - r.int32()
+                    Opcodes.LSUB -> l.long() - r.long()
+                    Opcodes.FSUB -> l.float() - r.float()
+                    Opcodes.DSUB -> l.double() - r.double()
+                    Opcodes.IMUL -> l.int32() * r.int32()
+                    Opcodes.LMUL -> l.long() * r.long()
+                    Opcodes.FMUL -> l.float() * r.float()
+                    Opcodes.DMUL -> l.double() * r.double()
+                    Opcodes.IDIV -> l.int32() / r.int32()
+                    Opcodes.LDIV -> l.long() / r.long()
+                    Opcodes.FDIV -> l.float() / r.float()
+                    Opcodes.DDIV -> l.double() / r.double()
+                    Opcodes.IREM -> l.int32() % r.int32()
+                    Opcodes.LREM -> l.long() % r.long()
+                    Opcodes.FREM -> l.float() % r.float()
+                    Opcodes.DREM -> l.double() % r.double()
                     // TODO also interpret these operations
                     Opcodes.ISHL -> mkSymbolicInt32()
                     Opcodes.LSHL -> mkSymbolicLong()
@@ -245,7 +261,7 @@ class SymbolicInterpreter(
                     in Opcodes.INVOKEVIRTUAL..Opcodes.INVOKEINTERFACE -> {
                         if (opcode != Opcodes.INVOKESTATIC) {
                             checker.mustBeNonNull(
-                                values.first() as ReferenceValue,
+                                values.first().ref(),
                                 "invocation receiver might be null"
                             )
                         }

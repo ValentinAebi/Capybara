@@ -1,6 +1,6 @@
 package com.github.valentinaebi.capybara.loading
 
-import com.github.valentinaebi.capybara.SubtypingRelationBuilder
+import com.github.valentinaebi.capybara.solving.SubtypingRelationBuilder
 import com.github.valentinaebi.capybara.programstruct.Class
 import org.objectweb.asm.ClassReader
 import java.io.File

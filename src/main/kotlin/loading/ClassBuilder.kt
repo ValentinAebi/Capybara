@@ -2,9 +2,9 @@ package com.github.valentinaebi.capybara.loading
 
 import com.github.valentinaebi.capybara.API_LEVEL
 import com.github.valentinaebi.capybara.InternalName
-import com.github.valentinaebi.capybara.SubtypingRelationBuilder
 import com.github.valentinaebi.capybara.programstruct.Class
 import com.github.valentinaebi.capybara.programstruct.Method
+import com.github.valentinaebi.capybara.solving.SubtypingRelationBuilder
 import org.objectweb.asm.ClassVisitor
 import org.objectweb.asm.FieldVisitor
 import org.objectweb.asm.MethodVisitor

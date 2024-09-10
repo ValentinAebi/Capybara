@@ -1,8 +1,11 @@
-import com.github.valentinaebi.capybara.SubtypingRelationBuilder
+import com.github.valentinaebi.capybara.JAVA_LANG_OBJECT
+import com.github.valentinaebi.capybara.JAVA_LANG_STRING
 import com.github.valentinaebi.capybara.checks.Issue
 import com.github.valentinaebi.capybara.checks.Reporter
 import com.github.valentinaebi.capybara.loading.readClassFile
 import com.github.valentinaebi.capybara.solving.Solver
+import com.github.valentinaebi.capybara.solving.SubtypingRelation
+import com.github.valentinaebi.capybara.solving.SubtypingRelationBuilder
 import com.github.valentinaebi.capybara.symbolicexecution.Checker
 import com.github.valentinaebi.capybara.symbolicexecution.Executor
 import com.github.valentinaebi.capybara.symbolicexecution.OperatorsContext
@@ -14,6 +17,8 @@ import org.apache.maven.shared.invoker.DefaultInvoker
 import java.io.File
 import kotlin.io.path.Path
 import kotlin.test.Test
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 import kotlin.test.fail
 
 class ProjectsTests {
@@ -27,8 +32,8 @@ class ProjectsTests {
         mvnCompile(pomFilePath.toFile())
         val issuesMatchers = readAnnotatedSrcFile(fooSourceFile).toMutableList()
 
-        val subtypeRel: SubtypingRelationBuilder = mutableMapOf()
-        val fooClass = readClassFile(fooClassFile, subtypeRel)
+        val subtypeRelBuilder: SubtypingRelationBuilder = mutableMapOf()
+        val fooClass = readClassFile(fooClassFile, subtypeRelBuilder)
 
         val reporter = Reporter()
         reporter.currentClass = fooClass
@@ -49,6 +54,12 @@ class ProjectsTests {
         reporter.dumpIssues { issues.add(it) }
 
         checkIssuesAgainstMatchers(issuesMatchers, issues)
+
+        val subtypingRelation = SubtypingRelation(subtypeRelBuilder)
+        with(subtypingRelation) {
+            assertTrue(fooClass.className.subtypeOf(JAVA_LANG_OBJECT))
+            assertFalse(fooClass.className.subtypeOf(JAVA_LANG_STRING))
+        }
     }
 
     private fun checkIssuesAgainstMatchers(

@@ -1,5 +1,6 @@
-package com.github.valentinaebi.capybara
+package com.github.valentinaebi.capybara.solving
 
+import com.github.valentinaebi.capybara.InternalName
 import org.objectweb.asm.Type
 import java.util.LinkedList
 
@@ -7,19 +8,16 @@ typealias SubtypingRelationBuilder = MutableMap<InternalName, MutableSet<Interna
 
 private const val primitiveDescriptors: String = "VZCBSIFJD"
 
-fun Type.subtypeOf(superT: Type, subtypingRelation: SubtypingRelation): Boolean {
-    return this.descriptor.subtypeOf(superT.descriptor, subtypingRelation)
-}
-
-fun InternalName.subtypeOf(superT: InternalName, subtypingRelation: SubtypingRelation): Boolean {
-    return subtypingRelation.isSubtype(this, superT)
-}
-
 class SubtypingRelation(private val superTypes: Map<InternalName, Set<InternalName>>) {
     private val cache: MutableMap<Query, Boolean> = mutableMapOf()
     private val cacheQuery = Query("", "")
 
-    fun isSubtype(subtype: InternalName, superType: InternalName): Boolean {
+    fun Type.subtypeOf(superT: Type): Boolean {
+        return this.descriptor.subtypeOf(superT.descriptor)
+    }
+
+    fun InternalName.subtypeOf(superType: InternalName): Boolean {
+        val subtype = this
         cacheQuery.subT = subtype
         cacheQuery.superT = superType
         cache[cacheQuery]?.let { return it }
@@ -37,6 +35,7 @@ class SubtypingRelation(private val superTypes: Map<InternalName, Set<InternalNa
                 cache[Query(subtype, superType)] = true
                 return true
             }
+            superTypes[currT]?.let { workList.addAll(it) }
         }
         cache[Query(subtype, superType)] = false
         return false

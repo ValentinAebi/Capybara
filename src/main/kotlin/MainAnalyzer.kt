@@ -3,6 +3,7 @@ package com.github.valentinaebi.capybara
 import com.github.valentinaebi.capybara.checks.Reporter
 import com.github.valentinaebi.capybara.loading.readClassFilesInDirTrees
 import com.github.valentinaebi.capybara.solving.Solver
+import com.github.valentinaebi.capybara.solving.SubtypingRelationBuilder
 import com.github.valentinaebi.capybara.symbolicexecution.Checker
 import com.github.valentinaebi.capybara.symbolicexecution.Executor
 import com.github.valentinaebi.capybara.symbolicexecution.OperatorsContext

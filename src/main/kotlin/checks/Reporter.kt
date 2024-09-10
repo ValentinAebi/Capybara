@@ -27,19 +27,15 @@ class Reporter {
             issue1: Issue,
             issue2: Issue
         ): Int {
-            val classComp = issue1.clazz.className.compareTo(issue2.clazz.className)
-            if (classComp != 0) {
-                return classComp
-            }
-            val methodComp = issue1.method.methodName.compareTo(issue2.method.methodName)
-            if (methodComp != 0) {
-                return methodComp
-            }
-            val lineComp = issue1.line.compareTo(issue2.line)
-            if (lineComp != 0) {
-                return lineComp
-            }
-            return issue1.description.compareTo(issue2.description)
+
+            fun compareUsing(compFunc: (Issue) -> Comparable<*>): Int? =
+                compareBy(compFunc).compare(issue1, issue2).takeIf { it != 0 }
+
+            return compareUsing { it.clazz.srcFileName }
+                ?: compareUsing { it.clazz.className }
+                ?: compareUsing { it.line }
+                ?: compareUsing { it.description }
+                ?: 0
         }
     }
 

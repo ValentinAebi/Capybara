@@ -13,7 +13,7 @@ data class Issue(
 
     override fun toString(): String {
         val lineDescr = if (line == UNKNOWN_LINE_NUMBER) "??" else line
-        return "${clazz.className}::${method.methodName} : line $lineDescr : $description"
+        return "file ${clazz.srcFileName}, line $lineDescr : $description"
     }
 
 }

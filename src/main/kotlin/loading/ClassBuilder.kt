@@ -15,12 +15,13 @@ import org.objectweb.asm.tree.MethodNode
 
 class ClassBuilder(private val subtypingMap: SubtypingRelationBuilder) :
     ClassVisitor(API_LEVEL) {
-    private var classInternalName: String? = null
+    private var classInternalName: InternalName? = null
+    private var srcFileName: String? = null
     private val fields: MutableMap<String, InternalName> = linkedMapOf()
     private val methods: LinkedHashMap<String, Method> = linkedMapOf()
     private var methodsMayBeOverriden: Boolean = true
 
-    fun toClass(): Class = Class(classInternalName!!, fields, methods)
+    fun toClass(): Class = Class(classInternalName!!, fields, methods, srcFileName!!)
 
     override fun visit(
         version: Int,
@@ -59,13 +60,17 @@ class ClassBuilder(private val subtypingMap: SubtypingRelationBuilder) :
 
     override fun visitField(
         access: Int,
-        name: String?,
+        name: String,
         descriptor: String?,
         signature: String?,
         value: Any?
     ): FieldVisitor? {
-        fields[name!!] = Type.getType(descriptor).internalName
+        fields[name] = Type.getType(descriptor).internalName
         return super.visitField(access, name, descriptor, signature, value)
+    }
+
+    override fun visitSource(source: String?, debug: String?) {
+        srcFileName = source
     }
 
     private fun saveSubtyping(subT: InternalName, superT: InternalName) {

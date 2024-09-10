@@ -13,15 +13,22 @@ import java.io.File
 
 
 fun main(args: Array<String>) {
+
     val timer = Timer()
     val topLevelFiles = args.map { File(it) }
     val subtypeRel: SubtypingRelationBuilder = mutableMapOf()
-    timer.start()
+
+    // Load class files
+    timer.reset()
     val classes = readClassFilesInDirTrees(topLevelFiles, subtypeRel)
-    val loadingTime = timer.stop()
-    timer.start()
+    val loadingTime = timer.elapsedTime()
+
+    // Build CFGs
+    timer.reset()
     classes.forEach { it.methods.values.forEach { it.computeCfg() } }
-    val cfgComputationTime = timer.stop()
+    val cfgComputationTime = timer.elapsedTime()
+
+    // Display CFGs
     for (clazz in classes) {
         val className = clazz.className
         println("START CLASS $className")
@@ -35,7 +42,9 @@ fun main(args: Array<String>) {
         println("END CLASS $className\n\n")
     }
     println()
-    timer.start()
+
+    // Setup symbolic execution system
+    timer.reset()
     val reporter = Reporter()
     val ctx = KContext()
     val valuesCreator = ValuesCreator(ctx)
@@ -44,18 +53,22 @@ fun main(args: Array<String>) {
     val checker = Checker(reporter, solver)
     val interpreter = SymbolicInterpreter(reporter, valuesCreator, operatorsContext, checker)
     val executor = Executor(interpreter, solver, ctx, valuesCreator, reporter)
-    val symbolicExecutionSetupTime = timer.stop()
-    timer.start()
+    val symbolicExecutionSetupTime = timer.elapsedTime()
+
+    // Run symbolic execution of methods
+    timer.reset()
     for (clazz in classes) {
         reporter.currentClass = clazz
         for ((_, method) in clazz.methods) {
             executor.execute(method)
         }
     }
-    val symbolicExecutionTime = timer.stop()
+    val symbolicExecutionTime = timer.elapsedTime()
+
+    // Display results and statistics
     println("\n ---------- Analysis results ---------- ")
-    reporter.printReport(System.out)
-    println("\nStatistics:")
+    reporter.dumpIssues(::println)
+    println("\n ------------- Statistics ------------- ")
     println("  - Loading:            $loadingTime")
     println("  - CFGs building:      $cfgComputationTime")
     println("  - Symbolic execution setup: $symbolicExecutionSetupTime")

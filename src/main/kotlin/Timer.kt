@@ -6,11 +6,11 @@ import kotlin.time.Duration.Companion.nanoseconds
 class Timer {
     private var startTime: Long? = null
 
-    fun start() {
+    fun reset() {
         startTime = System.nanoTime()
     }
 
-    fun stop(): Duration {
+    fun elapsedTime(): Duration {
         val now = System.nanoTime()
         val durationNanos = now - startTime!!
         return durationNanos.nanoseconds

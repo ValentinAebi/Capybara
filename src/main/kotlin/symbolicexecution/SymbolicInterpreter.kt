@@ -131,7 +131,7 @@ class SymbolicInterpreter(
                     }
 
                     Opcodes.GETFIELD -> {
-                        checker.mustBeNonNull(value.ref(), "field owner might be null")
+                        checker.mustBeNonNull(value.ref(), Check.FLD_GET_NULL)
                         val fieldInsnNode = insn as FieldInsnNode
                         // TODO check if object is owned
                         mkSymbolicValue(fieldInsnNode.desc)
@@ -260,10 +260,7 @@ class SymbolicInterpreter(
                 when (opcode) {
                     in Opcodes.INVOKEVIRTUAL..Opcodes.INVOKEINTERFACE -> {
                         if (opcode != Opcodes.INVOKESTATIC) {
-                            checker.mustBeNonNull(
-                                values.first().ref(),
-                                "invocation receiver might be null"
-                            )
+                            checker.mustBeNonNull(values.first().ref(), Check.INVK_NULL_REC)
                         }
                         val methodDesc = (insn as MethodInsnNode).desc
                         val retType = Type.getReturnType(methodDesc)

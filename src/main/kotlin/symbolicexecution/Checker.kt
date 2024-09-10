@@ -10,12 +10,9 @@ class Checker(
     private val solver: Solver
 ) {
 
-    fun mustBeNonNull(
-        value: ReferenceValue,
-        msg: String
-    ) {
+    fun mustBeNonNull(value: ReferenceValue, check: Check) {
         if (solver.canProveIsNull(value)) {
-            reporter.report(msg)
+            reporter.report(check)
             throw ThrowEvent(NULL_POINTER_EXCEPTION)
         }
     }

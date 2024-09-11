@@ -32,7 +32,6 @@ class Executor(
     private val valuesCreator: ValuesCreator,
     private val reporter: Reporter
 ) {
-    private val nExecPerBlock: MutableMap<BasicBlock, Int> = mutableMapOf()
 
     fun execute(method: Method) {
         if (method.isAbstract) {
@@ -42,16 +41,17 @@ class Executor(
         val cfg = method.cfg!!
         val frame = Frame<ProgramValue>(method.numLocals!!, method.maxStack!!)
         populateFrameWithParams(method, frame)
-        dfsExecute(cfg.initialBasicBlock!!, frame, null, 0)
+        dfsExecute(cfg.initialBasicBlock!!, frame, null, 0, mutableMapOf())
     }
 
     private fun dfsExecute(
         block: BasicBlock,
         frame: Frame<ProgramValue>,
         newAssumption: KExpr<KBoolSort>?,
-        depth: Int
+        depth: Int,
+        nExecPerBlock: MutableMap<BasicBlock, Int>
     ) {
-        if (!canExecute(block, depth)) {
+        if (!nExecPerBlock.canExecute(block)) {
             return
         }
         interpreter.lineResolver = { block.insnList[it] ?: UNKNOWN_LINE_NUMBER }
@@ -60,18 +60,18 @@ class Executor(
             solver.assert(newAssumption)
         }
         if (solver.isConsistent()) {
-            incrementExecCnt(block)
+            nExecPerBlock.incrementExecCnt(block)
             try {
                 block.simulateInstructions(frame, interpreter)
                 val nextPaths = interpretTerminator(block.terminator, frame, ctx, valuesCreator)
                 for ((block, newConstraint) in nextPaths) {
                     val newFrame = Frame<ProgramValue>(frame)
-                    dfsExecute(block, newFrame, newConstraint, depth + 1)
+                    dfsExecute(block, newFrame, newConstraint, depth + 1, nExecPerBlock)
                 }
             } catch (_: ThrowEvent) {
                 // TODO also simulate exceptional paths
             } finally {
-                decrementExecCnt(block)
+                nExecPerBlock.decrementExecCnt(block)
             }
         }
         if (newAssumption != null) {
@@ -163,26 +163,26 @@ class Executor(
         val argTypes = Type.getType(method.methodNode.desc).argumentTypes
         var localIdx = 0
         if (method.hasReceiver) {
-            frame.setLocal(localIdx, valuesCreator.mkSymbolicRef())
+            frame.setLocal(localIdx, valuesCreator.mkSymbolicRef("recv"))
             localIdx += 1
         }
-        for (argType in argTypes) {
-            frame.setLocal(localIdx, valuesCreator.mkSymbolicValue(argType.sort))
+        for ((idx, argType) in argTypes.withIndex()) {
+            frame.setLocal(localIdx, valuesCreator.mkSymbolicValue(argType.sort, "arg$idx"))
             localIdx += argType.size
         }
     }
 
-    private fun incrementExecCnt(block: BasicBlock) {
-        val cntBefore = nExecPerBlock.getOrPut(block) { 0 }
-        nExecPerBlock[block] = cntBefore + 1
+    private fun MutableMap<BasicBlock, Int>.incrementExecCnt(block: BasicBlock) {
+        val cntBefore = getOrPut(block) { 0 }
+        this[block] = cntBefore + 1
     }
 
-    private fun decrementExecCnt(block: BasicBlock) {
-        nExecPerBlock[block] = nExecPerBlock[block]!! - 1
+    private fun MutableMap<BasicBlock, Int>.decrementExecCnt(block: BasicBlock) {
+        this[block] = this[block]!! - 1
     }
 
-    private fun canExecute(block: BasicBlock, depth: Int): Boolean {
-        val cnt = nExecPerBlock[block]
+    private fun MutableMap<BasicBlock, Int>.canExecute(block: BasicBlock): Boolean {
+        val cnt = this[block]
         return cnt == null || cnt < MAX_EXEC_CNT_FOR_SAME_BLOCK
     }
 

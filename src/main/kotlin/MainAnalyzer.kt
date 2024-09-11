@@ -52,7 +52,7 @@ fun main(args: Array<String>) {
     val operatorsContext = OperatorsContext(ctx)
     val solver = Solver(ctx, valuesCreator)
     val checker = Checker(reporter, solver)
-    val interpreter = SymbolicInterpreter(reporter, valuesCreator, operatorsContext, checker)
+    val interpreter = SymbolicInterpreter(reporter, valuesCreator, operatorsContext, checker, solver)
     val executor = Executor(interpreter, solver, ctx, valuesCreator, reporter)
     val symbolicExecutionSetupTime = timer.elapsedTime()
 

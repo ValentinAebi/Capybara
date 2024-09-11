@@ -72,4 +72,25 @@ public class Foo {
         int x = 42;
     }
 
+    void shouldKnowThatArrayLengthIsNonNeg1(String[] strings) {
+        var l = strings.length;
+        if (l < 0) {
+            System.out.println(strings[-1]);    // Should be OK (unreachable)
+        }
+    }
+
+    void shouldKnowThatArrayLengthIsNonNeg2(String[] strings, boolean b) {
+        var ints = new int[2];
+        var l = strings.length;
+        if (b) {
+            ints[l + 2] = -75;  // #issue[ARRAY_INDEX_OUT]
+        }
+        for (int i = 0; i < 2; i++) {
+            System.out.println(ints[i]);  // OK
+        }
+        for (int i = 0; i < 3; i++) {
+            System.out.println(ints[i]);  // #issue[ARRAY_INDEX_OUT]
+        }
+    }
+
 }

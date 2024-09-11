@@ -2,6 +2,7 @@ package com.github.valentinaebi.capybara.symbolicexecution
 
 import com.github.valentinaebi.capybara.API_LEVEL
 import com.github.valentinaebi.capybara.checks.Reporter
+import com.github.valentinaebi.capybara.solving.Solver
 import com.github.valentinaebi.capybara.values.Int32Value
 import com.github.valentinaebi.capybara.values.LongValue
 import com.github.valentinaebi.capybara.values.ProgramValue
@@ -22,7 +23,8 @@ class SymbolicInterpreter(
     private val reporter: Reporter,
     private val valuesCreator: ValuesCreator,
     private val operatorsContext: OperatorsContext,
-    private val checker: Checker
+    private val checker: Checker,
+    private val solver: Solver
 ) : Interpreter<ProgramValue>(API_LEVEL) {
 
     var lineResolver: ((AbstractInsnNode) -> Int)? = null
@@ -138,9 +140,11 @@ class SymbolicInterpreter(
                     }
 
                     Opcodes.NEWARRAY, Opcodes.ANEWARRAY -> {
+                        val array = mkSymbolicRef()
+                        solver.saveArrayLength(array, value.int32())
                         // TODO check that length >= 0
                         // TODO add to owned objects
-                        mkSymbolicRef()
+                        array
                     }
 
                     Opcodes.ARRAYLENGTH -> valuesCreator.arrayLen(value.ref())
@@ -290,7 +294,11 @@ class SymbolicInterpreter(
                         if (retType == Type.VOID_TYPE) placeholderValue else mkSymbolicValue(retType.sort)
                     }
 
-                    Opcodes.MULTIANEWARRAY -> mkSymbolicRef()
+                    Opcodes.MULTIANEWARRAY -> {
+                        // TODO save length
+                        mkSymbolicRef()
+                    }
+
                     else -> throw AssertionError("unexpected opcode: ${Printer.OPCODES[opcode]}")
                 }
             }

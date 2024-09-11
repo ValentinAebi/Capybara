@@ -19,32 +19,27 @@ class ValuesCreator(private val ctx: KContext) {
     fun mkFloatValue(v: Float): FloatValue = with(ctx) { FloatValue(v.expr) }
     fun mkDoubleValue(v: Double): DoubleValue = with(ctx) { DoubleValue(v.expr) }
 
-    fun mkSymbolicInt32(idAnnot: String = ""): Int32Value = with(ctx) {
-        val namePrefix = "sv#${nextSvIdx++}_" + idAnnot
-        Int32Value(mkConst(namePrefix + "i32", intSort))
+    fun mkSymbolicInt32(idAnnot: String? = null): Int32Value = with(ctx) {
+        Int32Value(mkConst(mkPrefix(idAnnot) + "i32", intSort))
     }
 
-    fun mkSymbolicLong(idAnnot: String = ""): LongValue = with(ctx) {
-        val namePrefix = "sv#${nextSvIdx++}_" + idAnnot
-        LongValue(mkConst(namePrefix + "i64", intSort))
+    fun mkSymbolicLong(idAnnot: String? = null): LongValue = with(ctx) {
+        LongValue(mkConst(mkPrefix(idAnnot) + "i64", intSort))
     }
 
-    fun mkSymbolicFloat(idAnnot: String = ""): FloatValue = with(ctx) {
-        val namePrefix = "sv#${nextSvIdx++}_" + idAnnot
-        FloatValue(mkConst(namePrefix + "f32", fp32Sort))
+    fun mkSymbolicFloat(idAnnot: String? = null): FloatValue = with(ctx) {
+        FloatValue(mkConst(mkPrefix(idAnnot) + "f32", fp32Sort))
     }
 
-    fun mkSymbolicDouble(idAnnot: String = ""): DoubleValue = with(ctx) {
-        val namePrefix = "sv#${nextSvIdx++}_" + idAnnot
-        DoubleValue(mkConst(namePrefix + "f64", fp64Sort))
+    fun mkSymbolicDouble(idAnnot: String? = null): DoubleValue = with(ctx) {
+        DoubleValue(mkConst(mkPrefix(idAnnot) + "f64", fp64Sort))
     }
 
-    fun mkSymbolicRef(idAnnot: String = ""): ReferenceValue = with(ctx) {
-        val namePrefix = "sv#${nextSvIdx++}_" + idAnnot
-        ReferenceValue(mkConst(namePrefix + "ref", bv32Sort))
+    fun mkSymbolicRef(idAnnot: String? = null): ReferenceValue = with(ctx) {
+        ReferenceValue(mkConst(mkPrefix(idAnnot) + "ref", bv32Sort))
     }
 
-    fun mkSymbolicValue(asmSort: Int, idAnnot: String = ""): ProgramValue = when (asmSort) {
+    fun mkSymbolicValue(asmSort: Int, idAnnot: String? = null): ProgramValue = when (asmSort) {
         Type.BOOLEAN, Type.CHAR, Type.BYTE, Type.SHORT, Type.INT -> mkSymbolicInt32(idAnnot)
         Type.LONG -> mkSymbolicLong(idAnnot)
         Type.FLOAT -> mkSymbolicFloat(idAnnot)
@@ -53,8 +48,11 @@ class ValuesCreator(private val ctx: KContext) {
         else -> throw IllegalArgumentException("unexpected asmSort: $asmSort")
     }
 
-    fun mkSymbolicValue(desc: InternalName, idAnnot: String = ""): ProgramValue =
+    fun mkSymbolicValue(desc: InternalName, idAnnot: String? = null): ProgramValue =
         mkSymbolicValue(Type.getType(desc).sort, idAnnot)
+
+    private fun mkPrefix(idAnnot: String?): String =
+        "sv#${nextSvIdx++}_" + (if (idAnnot == null) "" else "${idAnnot}_")
 
     fun arrayLen(array: ReferenceValue): Int32Value {
         val lenOfArray = ctx.mkApp(arrayLenFunc, listOf(array.ksmtValue))

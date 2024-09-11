@@ -4,10 +4,11 @@ enum class Check(val msg: String) {
 
     // Null pointers
     INVK_NULL_REC("invocation receiver might be null"),
-    FLD_GET_NULL("field owner might be null"),
+    FLD_NULL_OWNER("field owner might be null"),
+    INDEXING_NULL_ARRAY("array might be null"),
 
     // Array indices
-    ARRAY_READ_INDEX_OUT("index of array access might be out of bounds")
+    ARRAY_INDEX_OUT("array index might be out of bounds")
 
     // TODO others
 }

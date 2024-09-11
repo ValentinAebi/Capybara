@@ -5,6 +5,7 @@ import com.github.valentinaebi.capybara.NULL_POINTER_EXCEPTION
 import com.github.valentinaebi.capybara.checks.Reporter
 import com.github.valentinaebi.capybara.solving.Solver
 import com.github.valentinaebi.capybara.values.Int32Value
+import com.github.valentinaebi.capybara.values.ProgramValue
 import com.github.valentinaebi.capybara.values.ReferenceValue
 
 class Checker(
@@ -19,9 +20,14 @@ class Checker(
         }
     }
 
-    fun arrayIndexMustBeInBounds(array: ReferenceValue, index: Int32Value, check: Check) {
+    fun arrayIndexingPrecondition(array: ProgramValue, idx: ProgramValue) {
+        mustBeNonNull(array.ref(), Check.INDEXING_NULL_ARRAY)
+        arrayIndexMustBeInBounds(array.ref(), idx.int32())
+    }
+
+    private fun arrayIndexMustBeInBounds(array: ReferenceValue, index: Int32Value) {
         if (solver.canProveIsOutOfBounds(array, index)){
-            reporter.report(check)
+            reporter.report(Check.ARRAY_INDEX_OUT)
             throw ThrowEvent(JAVA_LANG_ARRAY_IDX_OUT_OF_BOUNDS_EXCEPTION)
         }
     }

@@ -131,7 +131,7 @@ class SymbolicInterpreter(
                     }
 
                     Opcodes.GETFIELD -> {
-                        checker.mustBeNonNull(value.ref(), Check.FLD_GET_NULL)
+                        checker.mustBeNonNull(value.ref(), Check.FLD_NULL_OWNER)
                         val fieldInsnNode = insn as FieldInsnNode
                         // TODO check if object is owned
                         mkSymbolicValue(fieldInsnNode.desc)
@@ -173,29 +173,32 @@ class SymbolicInterpreter(
             with(operatorsContext) {
                 val opcode = insn.opcode
                 when (opcode) {
-                    // TODO check that array is not null
-                    // TODO check that index is in bounds
                     // TODO load value if array is owned
                     Opcodes.IALOAD, Opcodes.BALOAD, Opcodes.CALOAD, Opcodes.SALOAD -> {
-                        checker.arrayIndexMustBeInBounds(l.ref(), r.int32(), Check.ARRAY_READ_INDEX_OUT)
+                        checker.arrayIndexingPrecondition(l, r)
                         mkSymbolicInt32()
                     }
+
                     Opcodes.LALOAD -> {
-                        checker.arrayIndexMustBeInBounds(l.ref(), r.int32(), Check.ARRAY_READ_INDEX_OUT)
+                        checker.arrayIndexingPrecondition(l, r)
                         mkSymbolicLong()
                     }
+
                     Opcodes.FALOAD -> {
-                        checker.arrayIndexMustBeInBounds(l.ref(), r.int32(), Check.ARRAY_READ_INDEX_OUT)
+                        checker.arrayIndexingPrecondition(l, r)
                         mkSymbolicFloat()
                     }
+
                     Opcodes.DALOAD -> {
-                        checker.arrayIndexMustBeInBounds(l.ref(), r.int32(), Check.ARRAY_READ_INDEX_OUT)
+                        checker.arrayIndexingPrecondition(l, r)
                         mkSymbolicDouble()
                     }
+
                     Opcodes.AALOAD -> {
-                        checker.arrayIndexMustBeInBounds(l.ref(), r.int32(), Check.ARRAY_READ_INDEX_OUT)
+                        checker.arrayIndexingPrecondition(l, r)
                         mkSymbolicRef()
                     }
+
                     Opcodes.IADD -> l.int32() + r.int32()
                     Opcodes.LADD -> l.long() + r.long()
                     Opcodes.FADD -> l.float() + r.float()
@@ -237,7 +240,7 @@ class SymbolicInterpreter(
                     Opcodes.DCMPL -> mkSymbolicInt32()
                     Opcodes.DCMPG -> mkSymbolicInt32()
                     Opcodes.PUTFIELD -> {
-                        // TODO check that receiver != null
+                        checker.mustBeNonNull(l.ref(), Check.FLD_NULL_OWNER)
                         // TODO mark as leaked
                         placeholderValue
                     }
@@ -259,8 +262,7 @@ class SymbolicInterpreter(
         requireNotNull(value2)
         requireNotNull(value3)
         /* IASTORE, LASTORE, FASTORE, DASTORE, AASTORE, BASTORE, CASTORE, SASTORE */
-        // TODO check that array != null
-        // TODO check that index is in bounds
+        checker.arrayIndexingPrecondition(value1, value2)
         // TODO save if array is owned
         return valuesCreator.placeholderValue
     }

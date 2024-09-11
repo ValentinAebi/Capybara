@@ -23,7 +23,7 @@ import io.ksmt.sort.KBoolSort
 import org.objectweb.asm.Type
 import org.objectweb.asm.tree.analysis.Frame
 
-private const val MAX_DEPTH = 15
+private const val MAX_EXEC_CNT_FOR_SAME_BLOCK = 8
 
 class Executor(
     private val interpreter: SymbolicInterpreter,
@@ -32,6 +32,7 @@ class Executor(
     private val valuesCreator: ValuesCreator,
     private val reporter: Reporter
 ) {
+    private val nExecPerBlock: MutableMap<BasicBlock, Int> = mutableMapOf()
 
     fun execute(method: Method) {
         if (method.isAbstract) {
@@ -50,7 +51,7 @@ class Executor(
         newAssumption: KExpr<KBoolSort>?,
         depth: Int
     ) {
-        if (depth > MAX_DEPTH) {
+        if (!canExecute(block, depth)) {
             return
         }
         interpreter.lineResolver = { block.insnList[it] ?: UNKNOWN_LINE_NUMBER }
@@ -59,20 +60,18 @@ class Executor(
             solver.assert(newAssumption)
         }
         if (solver.isConsistent()) {
-            var executionCompleted: Boolean
+            incrementExecCnt(block)
             try {
                 block.simulateInstructions(frame, interpreter)
-                executionCompleted = true
-            } catch (_ : ThrowEvent){
-                // TODO also simulate exceptional paths
-                executionCompleted = false
-            }
-            if (executionCompleted) {
                 val nextPaths = interpretTerminator(block.terminator, frame, ctx, valuesCreator)
                 for ((block, newConstraint) in nextPaths) {
                     val newFrame = Frame<ProgramValue>(frame)
                     dfsExecute(block, newFrame, newConstraint, depth + 1)
                 }
+            } catch (_: ThrowEvent) {
+                // TODO also simulate exceptional paths
+            } finally {
+                decrementExecCnt(block)
             }
         }
         if (newAssumption != null) {
@@ -171,6 +170,20 @@ class Executor(
             frame.setLocal(localIdx, valuesCreator.mkSymbolicValue(argType.sort))
             localIdx += argType.size
         }
+    }
+
+    private fun incrementExecCnt(block: BasicBlock) {
+        val cntBefore = nExecPerBlock.getOrPut(block) { 0 }
+        nExecPerBlock[block] = cntBefore + 1
+    }
+
+    private fun decrementExecCnt(block: BasicBlock) {
+        nExecPerBlock[block] = nExecPerBlock[block]!! - 1
+    }
+
+    private fun canExecute(block: BasicBlock, depth: Int): Boolean {
+        val cnt = nExecPerBlock[block]
+        return cnt == null || cnt < MAX_EXEC_CNT_FOR_SAME_BLOCK
     }
 
 }

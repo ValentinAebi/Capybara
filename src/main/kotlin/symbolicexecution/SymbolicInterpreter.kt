@@ -143,7 +143,7 @@ class SymbolicInterpreter(
                         mkSymbolicRef()
                     }
 
-                    Opcodes.ARRAYLENGTH -> valuesCreator.arrayLen(value)
+                    Opcodes.ARRAYLENGTH -> valuesCreator.arrayLen(value.ref())
                     Opcodes.CHECKCAST -> {
                         // TODO check cast is possible
                         // TODO save new type
@@ -176,11 +176,26 @@ class SymbolicInterpreter(
                     // TODO check that array is not null
                     // TODO check that index is in bounds
                     // TODO load value if array is owned
-                    Opcodes.IALOAD, Opcodes.BALOAD, Opcodes.CALOAD, Opcodes.SALOAD -> mkSymbolicInt32()
-                    Opcodes.LALOAD -> mkSymbolicLong()
-                    Opcodes.FALOAD -> mkSymbolicFloat()
-                    Opcodes.DALOAD -> mkSymbolicDouble()
-                    Opcodes.AALOAD -> mkSymbolicRef()
+                    Opcodes.IALOAD, Opcodes.BALOAD, Opcodes.CALOAD, Opcodes.SALOAD -> {
+                        checker.arrayIndexMustBeInBounds(l.ref(), r.int32(), Check.ARRAY_READ_INDEX_OUT)
+                        mkSymbolicInt32()
+                    }
+                    Opcodes.LALOAD -> {
+                        checker.arrayIndexMustBeInBounds(l.ref(), r.int32(), Check.ARRAY_READ_INDEX_OUT)
+                        mkSymbolicLong()
+                    }
+                    Opcodes.FALOAD -> {
+                        checker.arrayIndexMustBeInBounds(l.ref(), r.int32(), Check.ARRAY_READ_INDEX_OUT)
+                        mkSymbolicFloat()
+                    }
+                    Opcodes.DALOAD -> {
+                        checker.arrayIndexMustBeInBounds(l.ref(), r.int32(), Check.ARRAY_READ_INDEX_OUT)
+                        mkSymbolicDouble()
+                    }
+                    Opcodes.AALOAD -> {
+                        checker.arrayIndexMustBeInBounds(l.ref(), r.int32(), Check.ARRAY_READ_INDEX_OUT)
+                        mkSymbolicRef()
+                    }
                     Opcodes.IADD -> l.int32() + r.int32()
                     Opcodes.LADD -> l.long() + r.long()
                     Opcodes.FADD -> l.float() + r.float()

@@ -16,7 +16,6 @@ import com.github.valentinaebi.capybara.programstruct.Method
 import com.github.valentinaebi.capybara.solving.Solver
 import com.github.valentinaebi.capybara.values.NumericValue
 import com.github.valentinaebi.capybara.values.ProgramValue
-import com.github.valentinaebi.capybara.values.ReferenceValue
 import com.github.valentinaebi.capybara.values.ValuesCreator
 import io.ksmt.KContext
 import io.ksmt.expr.KExpr
@@ -135,9 +134,9 @@ class Executor(
         valuesCreator: ValuesCreator
     ): KExpr<KBoolSort> {
         return when (pred) {
-            UnaryOperandStackPredicate.IsZero -> valuesCreator.isZeroConstraint(value as NumericValue<*>)
-            UnaryOperandStackPredicate.LessThanZero -> valuesCreator.isLessThanZeroConstraint(value as NumericValue<*>)
-            UnaryOperandStackPredicate.GreaterThanZero -> valuesCreator.isGreaterThanZeroConstraint(value as NumericValue<*>)
+            UnaryOperandStackPredicate.IsZero -> valuesCreator.isZeroFormula(value as NumericValue<*>)
+            UnaryOperandStackPredicate.LessThanZero -> valuesCreator.isLessThanZeroFormula(value as NumericValue<*>)
+            UnaryOperandStackPredicate.GreaterThanZero -> valuesCreator.isGreaterThanZeroFormula(value as NumericValue<*>)
             UnaryOperandStackPredicate.IsNull -> with(valuesCreator) { value.ref() eq nullValue }
         }
     }
@@ -148,13 +147,13 @@ class Executor(
         valuesCreator: ValuesCreator
     ): KExpr<KBoolSort> {
         return when (pred) {
-            BinaryOperandStackPredicate.Equal -> valuesCreator.areEqualConstraint(l, r)
+            BinaryOperandStackPredicate.Equal -> valuesCreator.areEqualFormula(l, r)
 
             BinaryOperandStackPredicate.LessThan ->
-                valuesCreator.lessThanConstraint(l as NumericValue<*>, r as NumericValue<*>)
+                valuesCreator.lessThanFormula(l as NumericValue<*>, r as NumericValue<*>)
 
             BinaryOperandStackPredicate.GreaterThan ->
-                valuesCreator.lessThanConstraint(r as NumericValue<*>, l as NumericValue<*>)
+                valuesCreator.lessThanFormula(r as NumericValue<*>, l as NumericValue<*>)
         }
     }
 

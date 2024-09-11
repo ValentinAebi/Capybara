@@ -4,7 +4,6 @@ import com.github.valentinaebi.capybara.values.DoubleValue
 import com.github.valentinaebi.capybara.values.FloatValue
 import com.github.valentinaebi.capybara.values.Int32Value
 import com.github.valentinaebi.capybara.values.LongValue
-import com.github.valentinaebi.capybara.values.ProgramValue
 import io.ksmt.KContext
 import io.ksmt.expr.KExpr
 import io.ksmt.expr.KFpRoundingMode

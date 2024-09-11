@@ -56,7 +56,7 @@ class ValuesCreator(private val ctx: KContext) {
     fun mkSymbolicValue(desc: InternalName, idAnnot: String = ""): ProgramValue =
         mkSymbolicValue(Type.getType(desc).sort, idAnnot)
 
-    fun arrayLen(array: ProgramValue): ProgramValue {
+    fun arrayLen(array: ReferenceValue): Int32Value {
         val lenOfArray = ctx.mkApp(arrayLenFunc, listOf(array.ksmtValue))
         return Int32Value(lenOfArray)
     }
@@ -119,7 +119,7 @@ class ValuesCreator(private val ctx: KContext) {
         return with(ctx) { l.ksmtValue eq r.ksmtValue }
     }
 
-    fun isZeroConstraint(v: NumericValue<*>): KExpr<KBoolSort> {
+    fun isZeroFormula(v: NumericValue<*>): KExpr<KBoolSort> {
         return when (v) {
             is Int32Value -> v eq zero_int
             is LongValue -> v eq zero_long
@@ -128,7 +128,7 @@ class ValuesCreator(private val ctx: KContext) {
         }
     }
 
-    fun isLessThanZeroConstraint(v: NumericValue<*>): KExpr<KBoolSort> {
+    fun isLessThanZeroFormula(v: NumericValue<*>): KExpr<KBoolSort> {
         return when (v) {
             is Int32Value -> ctx.mkArithLt(v.ksmtValue, zero_int.ksmtValue)
             is LongValue -> ctx.mkArithLt(v.ksmtValue, zero_long.ksmtValue)
@@ -137,7 +137,7 @@ class ValuesCreator(private val ctx: KContext) {
         }
     }
 
-    fun isGreaterThanZeroConstraint(v: NumericValue<*>): KExpr<KBoolSort> {
+    fun isGreaterThanZeroFormula(v: NumericValue<*>): KExpr<KBoolSort> {
         return when (v) {
             is Int32Value -> ctx.mkArithGt(v.ksmtValue, zero_int.ksmtValue)
             is LongValue -> ctx.mkArithGt(v.ksmtValue, zero_long.ksmtValue)
@@ -146,7 +146,7 @@ class ValuesCreator(private val ctx: KContext) {
         }
     }
 
-    fun lessThanConstraint(l: NumericValue<*>, r: NumericValue<*>): KExpr<KBoolSort> {
+    fun lessThanFormula(l: NumericValue<*>, r: NumericValue<*>): KExpr<KBoolSort> {
         return when {
             l is Int32Value && r is Int32Value -> ctx.mkArithLt(l.ksmtValue, r.ksmtValue)
             l is LongValue && r is LongValue -> ctx.mkArithLt(l.ksmtValue, r.ksmtValue)
@@ -156,7 +156,17 @@ class ValuesCreator(private val ctx: KContext) {
         }
     }
 
-    fun areEqualConstraint(l: ProgramValue, r: ProgramValue): KExpr<KBoolSort> {
+    fun lessThanOrEqualToFormula(l: NumericValue<*>, r: NumericValue<*>): KExpr<KBoolSort> {
+        return when {
+            l is Int32Value && r is Int32Value -> ctx.mkArithLe(l.ksmtValue, r.ksmtValue)
+            l is LongValue && r is LongValue -> ctx.mkArithLe(l.ksmtValue, r.ksmtValue)
+            l is FloatValue && r is FloatValue -> ctx.mkFpLessOrEqualExpr(l.ksmtValue, r.ksmtValue)
+            l is DoubleValue && r is DoubleValue -> ctx.mkFpLessOrEqualExpr(l.ksmtValue, r.ksmtValue)
+            else -> throw AssertionError("wrong operand types: ${l::class.simpleName} < ${r::class.simpleName}")
+        }
+    }
+
+    fun areEqualFormula(l: ProgramValue, r: ProgramValue): KExpr<KBoolSort> {
         return when {
             l is Int32Value && r is Int32Value -> l eq r
             l is LongValue && r is LongValue -> l eq r

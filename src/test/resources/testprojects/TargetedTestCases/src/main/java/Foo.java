@@ -19,10 +19,21 @@ public class Foo {
             System.out.println(s.length());     // #issue[INVK_NULL_REC]: example model = (s=null, x=1, y=0)
             System.out.println(s.length());     // not an issue: cannot be executed due to previous line
         }
-        if (x + 2 < y){
+        if (x + 2 < y) {
             // not an issue: x + 2 < y => x < y => s != null due to assignment at (*)
             System.out.println(s.length());
         }
+    }
+
+    void bar(int[] array, int i) {
+        var len = array.length;
+        var head = array[0];
+        int end = 0;
+        if (i == len + 1) {
+            end = i;
+        }
+        end = array[end];   // #issue[ARRAY_READ_INDEX_OUT]
+        System.out.println(Math.max(head - end, len));
     }
 
 }

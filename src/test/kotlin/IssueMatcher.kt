@@ -12,6 +12,6 @@ data class IssueMatcher(
                 && issue.line == line
                 && issue.check == check
 
-    override fun toString(): String = "$srcFileName:$line:$check"
+    override fun toString(): String = "[name=$srcFileName ; line=$line ; check=$check]"
 
 }

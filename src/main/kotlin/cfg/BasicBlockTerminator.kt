@@ -53,12 +53,12 @@ class IteTerminator(
 class TableSwitchTerminator(
     val minKey: Int,
     casesBlocks: List<BasicBlock>,
-    defaultBlock: BasicBlock?
+    defaultBlock: BasicBlock
 ) : BasicBlockTerminator {
 
     var cases: List<BasicBlock> = casesBlocks
         private set
-    var default: BasicBlock? = defaultBlock
+    var default: BasicBlock = defaultBlock
         private set
 
     override fun toString(): String = "tableswitch"

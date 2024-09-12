@@ -72,14 +72,14 @@ public class Foo {
         int x = 42;
     }
 
-    void shouldKnowThatArrayLengthIsNonNeg1(String[] strings) {
+    void shouldKnowThatArrayLengthIsNonNeg(String[] strings) {
         var l = strings.length;
         if (l < 0) {
             System.out.println(strings[-1]);    // Should be OK (unreachable)
         }
     }
 
-    void shouldKnowThatArrayLengthIsNonNeg2(String[] strings, boolean b) {
+    void shouldSaveArrayLengthOnCreation(String[] strings, boolean b) {
         var ints = new int[2];
         var l = strings.length;
         if (b) {
@@ -91,6 +91,33 @@ public class Foo {
         for (int i = 0; i < 3; i++) {
             System.out.println(ints[i]);  // #issue[ARRAY_INDEX_OUT]
         }
+    }
+
+    void tableSwitch(int i) {
+        var arr = new int[i + 2];
+        for (int j = 0; j < i; j++) {
+            arr[j] = 2 * j + 1;
+        }
+        int x = i*i;
+        switch (i) {
+            case 2:
+            case 3:
+                System.out.println("Hello");
+                break;
+            case 1:
+                System.out.println(arr[3]);     // #issue[ARRAY_INDEX_OUT]
+                break;
+            case -1:
+                System.out.println(arr[0]);
+                break;
+            case 5:
+            case 6:
+            case 7:
+            case 8:
+                x += (i % 3);
+                break;
+        }
+        System.out.println(x);
     }
 
 }

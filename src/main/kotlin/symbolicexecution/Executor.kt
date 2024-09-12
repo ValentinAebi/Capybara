@@ -114,8 +114,34 @@ class Executor(
             }
 
             terminator is SingleSuccessorTerminator -> listOf(terminator.successor to null)
-            terminator is TableSwitchTerminator -> TODO()
-            terminator is LookupSwitchTerminator -> TODO()
+            terminator is TableSwitchTerminator -> with(valuesCreator) {
+                with(ctx) {
+                    val selector = frame.pop().int32().ksmtValue
+                    val dflt = terminator.default
+                    val nextPaths = mutableListOf<Pair<BasicBlock, KExpr<KBoolSort>>>()
+                    val conditionsLeadingToDefault = mutableListOf<KExpr<KBoolSort>>()
+                    var key = terminator.minKey
+                    conditionsLeadingToDefault.add(mkArithLt(selector, key.expr))
+                    for (case in terminator.cases) {
+                        val formula = selector eq key.expr
+                        if (case == dflt) {
+                            conditionsLeadingToDefault.add(formula)
+                        } else {
+                            nextPaths.add(case to formula)
+                        }
+                        key += 1
+                    }
+                    conditionsLeadingToDefault.add(mkArithLt(key.expr, selector))
+                    nextPaths.add(dflt to mkOr(conditionsLeadingToDefault))
+                    nextPaths
+                }
+            }
+
+            terminator is LookupSwitchTerminator -> {
+                val selector = frame.pop()
+                TODO()
+            }
+
             terminator == ThrowTerminator -> {
                 frame.pop()
                 // TODO consider catches (and pop the right number of times)

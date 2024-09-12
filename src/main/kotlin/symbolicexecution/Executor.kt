@@ -84,38 +84,39 @@ class Executor(
         frame: Frame<ProgramValue>,
         ctx: KContext,
         valuesCreator: ValuesCreator
-    ): List<Pair<BasicBlock, KExpr<KBoolSort>?>> {
-        return when {
-            terminator is IteTerminator && terminator.cond is UnaryOperandStackPredicate -> {
-                val value = frame.pop()
-                val constraint = constraintFor(terminator.cond, value, valuesCreator)
-                listOf(
-                    terminator.successorIfTrue to constraint,
-                    terminator.successorIfFalse to ctx.mkNot(constraint)
-                )
-            }
-
-            terminator is IteTerminator && terminator.cond is BinaryOperandStackPredicate -> {
-                val r = frame.pop()
-                val l = frame.pop()
-                val constraint = constraintFor(terminator.cond, l, r, valuesCreator)
-                listOf(
-                    terminator.successorIfTrue to constraint,
-                    terminator.successorIfFalse to ctx.mkNot(constraint)
-                )
-            }
-
-            terminator is ReturnTerminator -> {
-                if (terminator.mustPopValue) {
-                    frame.pop()
+    ): List<Pair<BasicBlock, KExpr<KBoolSort>?>> = with(ctx) {
+        with(valuesCreator) {
+            return when {
+                terminator is IteTerminator && terminator.cond is UnaryOperandStackPredicate -> {
+                    val value = frame.pop()
+                    val constraint = constraintFor(terminator.cond, value, valuesCreator)
+                    listOf(
+                        terminator.successorIfTrue to constraint,
+                        terminator.successorIfFalse to ctx.mkNot(constraint)
+                    )
                 }
-                assert(frame.stackSize == 0)
-                emptyList()
-            }
 
-            terminator is SingleSuccessorTerminator -> listOf(terminator.successor to null)
-            terminator is TableSwitchTerminator -> with(valuesCreator) {
-                with(ctx) {
+                terminator is IteTerminator && terminator.cond is BinaryOperandStackPredicate -> {
+                    val r = frame.pop()
+                    val l = frame.pop()
+                    val constraint = constraintFor(terminator.cond, l, r, valuesCreator)
+                    listOf(
+                        terminator.successorIfTrue to constraint,
+                        terminator.successorIfFalse to mkNot(constraint)
+                    )
+                }
+
+                terminator is ReturnTerminator -> {
+                    if (terminator.mustPopValue) {
+                        frame.pop()
+                    }
+                    assert(frame.stackSize == 0)
+                    emptyList()
+                }
+
+                terminator is SingleSuccessorTerminator -> listOf(terminator.successor to null)
+                terminator is TableSwitchTerminator -> {
+
                     val selector = frame.pop().int32().ksmtValue
                     val dflt = terminator.default
                     val nextPaths = mutableListOf<Pair<BasicBlock, KExpr<KBoolSort>>>()
@@ -135,22 +136,31 @@ class Executor(
                     nextPaths.add(dflt to mkOr(conditionsLeadingToDefault))
                     nextPaths
                 }
+
+                terminator is LookupSwitchTerminator -> {
+                    val selector = frame.pop().int32().ksmtValue
+                    val nextPaths = mutableListOf<Pair<BasicBlock, KExpr<KBoolSort>>>()
+                    for ((key, block) in terminator.cases) {
+                        val key = (key as Int).expr
+                        val formula = selector eq key
+                        nextPaths.add(block to formula)
+                    }
+                    val conditionsLeadingToNonDefault = nextPaths.map { it.second }
+                    val defaultCond = mkNot(mkOr(conditionsLeadingToNonDefault))
+                    nextPaths.add(terminator.default to defaultCond)
+                    nextPaths
+                }
+
+                terminator == ThrowTerminator -> {
+                    frame.pop()
+                    // TODO consider catches (and pop the right number of times)
+                    emptyList()
+                }
+
+                else -> throw AssertionError("unexpected terminator: ${terminator.fullDescr()}")
             }
 
-            terminator is LookupSwitchTerminator -> {
-                val selector = frame.pop()
-                TODO()
-            }
-
-            terminator == ThrowTerminator -> {
-                frame.pop()
-                // TODO consider catches (and pop the right number of times)
-                emptyList()
-            }
-
-            else -> throw AssertionError("unexpected terminator: ${terminator.fullDescr()}")
         }
-
     }
 
     private fun constraintFor(

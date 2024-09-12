@@ -81,12 +81,12 @@ class TableSwitchTerminator(
 
 class LookupSwitchTerminator(
     casesBlocks: Map<Any, BasicBlock>,
-    defaultBlock: BasicBlock?
+    defaultBlock: BasicBlock
 ) : BasicBlockTerminator {
 
     var cases: Map<Any, BasicBlock> = casesBlocks
         private set
-    var default: BasicBlock? = defaultBlock
+    var default: BasicBlock = defaultBlock
         private set
 
     override fun toString(): String = "lookupswitch"

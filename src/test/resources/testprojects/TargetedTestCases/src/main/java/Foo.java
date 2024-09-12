@@ -120,4 +120,37 @@ public class Foo {
         System.out.println(x);
     }
 
+    void lookupSwitch(int i, Object o) {
+        var arr = new int[i + 2];
+        for (int j = 0; j < i; j++) {
+            arr[j] = 2 * j + 1;
+        }
+        int x = i*i;
+        if (i == 100){
+            i += 1;
+        }
+        if (o == null){
+            i = 100;
+        }
+        switch (i) {
+            case 21:
+            case 39:
+                System.out.println("Hello");
+                break;
+            case 1:
+                System.out.println(arr[3]);     // #issue[ARRAY_INDEX_OUT]
+                break;
+            case 57:
+            case 68:
+            case 79:
+            case 82:
+                x += (i % 3);
+                break;
+            case 100:
+                o.hashCode();   // #issue[INVK_NULL_REC]
+                break;
+        }
+        System.out.println(x);
+    }
+
 }

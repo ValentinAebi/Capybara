@@ -87,6 +87,7 @@ class Executor(
     ): List<Pair<BasicBlock, KExpr<KBoolSort>?>> = with(ctx) {
         with(valuesCreator) {
             return when {
+
                 terminator is IteTerminator && terminator.cond is UnaryOperandStackPredicate -> {
                     val value = frame.pop()
                     val constraint = constraintFor(terminator.cond, value, valuesCreator)
@@ -115,8 +116,8 @@ class Executor(
                 }
 
                 terminator is SingleSuccessorTerminator -> listOf(terminator.successor to null)
-                terminator is TableSwitchTerminator -> {
 
+                terminator is TableSwitchTerminator -> {
                     val selector = frame.pop().int32().ksmtValue
                     val dflt = terminator.default
                     val nextPaths = mutableListOf<Pair<BasicBlock, KExpr<KBoolSort>>>()

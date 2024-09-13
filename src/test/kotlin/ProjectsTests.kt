@@ -1,5 +1,5 @@
-import com.github.valentinaebi.capybara.JAVA_LANG_OBJECT
-import com.github.valentinaebi.capybara.JAVA_LANG_STRING
+import com.github.valentinaebi.capybara.OBJECT
+import com.github.valentinaebi.capybara.STRING
 import com.github.valentinaebi.capybara.checks.Issue
 import com.github.valentinaebi.capybara.checks.Reporter
 import com.github.valentinaebi.capybara.loading.readClassFile
@@ -57,8 +57,8 @@ class ProjectsTests {
 
         val subtypingRelation = SubtypingRelation(subtypeRelBuilder)
         with(subtypingRelation) {
-            assertTrue(fooClass.className.subtypeOf(JAVA_LANG_OBJECT))
-            assertFalse(fooClass.className.subtypeOf(JAVA_LANG_STRING))
+            assertTrue(fooClass.className.subtypeOf(OBJECT))
+            assertFalse(fooClass.className.subtypeOf(STRING))
         }
     }
 

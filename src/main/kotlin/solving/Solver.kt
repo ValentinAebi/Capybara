@@ -49,6 +49,12 @@ class Solver(private val ctx: KContext, private val valuesCreator: ValuesCreator
         }
     }
 
+    fun canProveStrictlyNegative(value: Int32Value): Boolean {
+        val okFormula = ctx.mkNot(valuesCreator.isLessThanZeroFormula(value))
+        val status = ksmtSolver.checkWithAssumptions(listOf(okFormula), timeout)
+        return status == KSolverStatus.UNSAT
+    }
+
     fun saveArrayLength(array: ReferenceValue, length: Int32Value) {
         with(valuesCreator) {
             ksmtSolver.assert(areEqualFormula(arrayLen(array), length))

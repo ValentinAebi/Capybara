@@ -18,15 +18,22 @@ class SubtypingRelation(private val superTypes: Map<InternalName, Set<InternalNa
 
     fun InternalName.subtypeOf(superType: InternalName): Boolean {
         val subtype = this
+
+        if (subtype == superType){
+            return true
+        }
+
         cacheQuery.subT = subtype
         cacheQuery.superT = superType
         cache[cacheQuery]?.let { return it }
+
         if (
             subtype.length == 1 && subtype[0] in primitiveDescriptors
             || superType.length == 1 && superType[0] in primitiveDescriptors
         ) {
             return false
         }
+
         val workList = LinkedList<InternalName>()
         workList.addLast(subtype)
         while (workList.isNotEmpty()) {

@@ -140,9 +140,9 @@ class SymbolicInterpreter(
                     }
 
                     Opcodes.NEWARRAY, Opcodes.ANEWARRAY -> {
+                        checker.arrayLenMustBeNonNegative(value.int32())
                         val array = mkSymbolicRef()
                         solver.saveArrayLength(array, value.int32())
-                        // TODO check that length >= 0
                         // TODO add to owned objects
                         array
                     }
@@ -295,6 +295,7 @@ class SymbolicInterpreter(
                     }
 
                     Opcodes.MULTIANEWARRAY -> {
+                        // TODO add checks here
                         // TODO save length
                         mkSymbolicRef()
                     }

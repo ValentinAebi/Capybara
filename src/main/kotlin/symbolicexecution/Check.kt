@@ -7,8 +7,9 @@ enum class Check(val msg: String) {
     FLD_NULL_OWNER("field owner might be null"),
     INDEXING_NULL_ARRAY("array might be null"),
 
-    // Array indices
-    ARRAY_INDEX_OUT("array index might be out of bounds")
+    // Arrays indices and length
+    ARRAY_INDEX_OUT("array index might be out of bounds"),
+    NEG_ARRAY_LEN("array length might be negative")
 
     // TODO others
 }

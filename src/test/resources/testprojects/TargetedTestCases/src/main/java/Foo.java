@@ -153,4 +153,22 @@ public class Foo {
         System.out.println(x);
     }
 
+    Bar[] arrayNegativeLen(int len, int[] indices){
+        if (len < -10){
+            throw new IllegalArgumentException();
+        } else if (len < -5){
+            System.err.println("Bad length for array");
+        }
+        for (int i = 0; i < len; i++) {
+            System.out.println(i);
+        }
+        if (len < -50){
+            return new Bar[-1];     // should be OK, unreachable
+        }
+        if (len < -7){
+            return new Bar[len];    // #issue[NEG_ARRAY_LEN]
+        }
+        return new Bar[0];
+    }
+
 }

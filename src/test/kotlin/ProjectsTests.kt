@@ -41,7 +41,7 @@ class ProjectsTests {
         val valuesCreator = ValuesCreator(ctx)
         val operatorsContext = OperatorsContext(ctx)
         val solver = Solver(ctx, valuesCreator)
-        val checker = Checker(reporter, solver)
+        val checker = Checker(reporter, solver, ctx, valuesCreator)
         val interpreter = SymbolicInterpreter(reporter, valuesCreator, operatorsContext, checker, solver)
         val executor = Executor(interpreter, solver, ctx, valuesCreator, reporter)
 

@@ -1,13 +1,13 @@
 package com.github.valentinaebi.capybara
 
+import com.github.valentinaebi.capybara.checks.Checker
 import com.github.valentinaebi.capybara.checks.Reporter
 import com.github.valentinaebi.capybara.loading.readClassFilesInDirTrees
 import com.github.valentinaebi.capybara.solving.Solver
 import com.github.valentinaebi.capybara.solving.SubtypingRelationBuilder
-import com.github.valentinaebi.capybara.checks.Checker
 import com.github.valentinaebi.capybara.symbolicexecution.Executor
-import com.github.valentinaebi.capybara.values.OperatorsContext
 import com.github.valentinaebi.capybara.symbolicexecution.SymbolicInterpreter
+import com.github.valentinaebi.capybara.values.OperatorsContext
 import com.github.valentinaebi.capybara.values.ValuesCreator
 import io.ksmt.KContext
 import java.io.File
@@ -51,7 +51,7 @@ fun main(args: Array<String>) {
     val valuesCreator = ValuesCreator(ctx)
     val operatorsContext = OperatorsContext(ctx)
     val solver = Solver(ctx, valuesCreator)
-    val checker = Checker(reporter, solver)
+    val checker = Checker(reporter, solver, ctx, valuesCreator)
     val interpreter = SymbolicInterpreter(reporter, valuesCreator, operatorsContext, checker, solver)
     val executor = Executor(interpreter, solver, ctx, valuesCreator, reporter)
     val symbolicExecutionSetupTime = timer.elapsedTime()

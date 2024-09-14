@@ -186,4 +186,13 @@ public class Foo {
         };
     }
 
+    void assumeFailureConditionIsWrongAfterFailPoint(int x) {
+        var array = new int[x];
+        System.out.println(array[25]);
+        if (x < 26) {
+            var t = array[array.length + 1];  // unreachable because x < 26 => len(array) < 26 ==> array[25] is out of bounds
+            System.out.println(t);
+        }
+    }
+
 }

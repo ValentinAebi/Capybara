@@ -1,9 +1,5 @@
 package com.github.valentinaebi.capybara.checks
 
-import com.github.valentinaebi.capybara.ARITH_EXCEPTION
-import com.github.valentinaebi.capybara.ARRAY_IDX_OUT_OF_BOUNDS_EXCEPTION
-import com.github.valentinaebi.capybara.NEG_ARRAY_SIZE_EXCEPTION
-import com.github.valentinaebi.capybara.NULL_POINTER_EXCEPTION
 import com.github.valentinaebi.capybara.solving.Solver
 import com.github.valentinaebi.capybara.symbolicexecution.ThrowEvent
 import com.github.valentinaebi.capybara.values.Int32Value
@@ -17,17 +13,11 @@ class Checker(
 ) {
 
     fun mustBeNonNull(value: ReferenceValue, check: Check) {
-        if (solver.canProveIsNull(value)) {
-            reporter.report(check)
-            throw ThrowEvent(NULL_POINTER_EXCEPTION)
-        }
+        reportAndThrowIf(solver.canProveIsNull(value), check)
     }
 
-    fun divisorMustNotBeZero(divisor: NumericValue<*>){
-        if (solver.canProveIsZero(divisor)){
-            reporter.report(Check.DIV_BY_ZERO)
-            throw ThrowEvent(ARITH_EXCEPTION)
-        }
+    fun divisorMustNotBeZero(divisor: NumericValue<*>) {
+        reportAndThrowIf(solver.canProveIsZero(divisor), Check.DIV_BY_ZERO)
     }
 
     fun arrayIndexingPrecondition(array: ProgramValue, idx: ProgramValue) {
@@ -36,16 +26,17 @@ class Checker(
     }
 
     fun arrayLenMustBeNonNegative(len: Int32Value) {
-        if (solver.canProveStrictlyNegative(len)) {
-            reporter.report(Check.NEG_ARRAY_LEN)
-            throw ThrowEvent(NEG_ARRAY_SIZE_EXCEPTION)
-        }
+        reportAndThrowIf(solver.canProveStrictlyNegative(len), Check.NEG_ARRAY_LEN)
     }
 
     private fun arrayIndexMustBeInBounds(array: ReferenceValue, index: Int32Value) {
-        if (solver.canProveIsOutOfBounds(array, index)) {
-            reporter.report(Check.ARRAY_INDEX_OUT)
-            throw ThrowEvent(ARRAY_IDX_OUT_OF_BOUNDS_EXCEPTION)
+        reportAndThrowIf(solver.canProveIsOutOfBounds(array, index), Check.ARRAY_INDEX_OUT)
+    }
+
+    private fun reportAndThrowIf(errorCond: Boolean, check: Check) {
+        if (errorCond) {
+            reporter.report(check)
+            throw ThrowEvent(check.exception)
         }
     }
 

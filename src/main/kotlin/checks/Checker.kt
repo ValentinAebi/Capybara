@@ -1,11 +1,11 @@
-package com.github.valentinaebi.capybara.symbolicexecution
+package com.github.valentinaebi.capybara.checks
 
 import com.github.valentinaebi.capybara.ARITH_EXCEPTION
 import com.github.valentinaebi.capybara.ARRAY_IDX_OUT_OF_BOUNDS_EXCEPTION
 import com.github.valentinaebi.capybara.NEG_ARRAY_SIZE_EXCEPTION
 import com.github.valentinaebi.capybara.NULL_POINTER_EXCEPTION
-import com.github.valentinaebi.capybara.checks.Reporter
 import com.github.valentinaebi.capybara.solving.Solver
+import com.github.valentinaebi.capybara.symbolicexecution.ThrowEvent
 import com.github.valentinaebi.capybara.values.Int32Value
 import com.github.valentinaebi.capybara.values.NumericValue
 import com.github.valentinaebi.capybara.values.ProgramValue

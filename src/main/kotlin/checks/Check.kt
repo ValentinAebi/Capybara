@@ -1,4 +1,4 @@
-package com.github.valentinaebi.capybara.symbolicexecution
+package com.github.valentinaebi.capybara.checks
 
 enum class Check(val msg: String) {
 

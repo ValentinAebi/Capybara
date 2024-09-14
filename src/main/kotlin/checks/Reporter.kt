@@ -3,7 +3,6 @@ package com.github.valentinaebi.capybara.checks
 import com.github.valentinaebi.capybara.UNKNOWN_LINE_NUMBER
 import com.github.valentinaebi.capybara.programstruct.Class
 import com.github.valentinaebi.capybara.programstruct.Method
-import com.github.valentinaebi.capybara.symbolicexecution.Check
 
 class Reporter {
     private val issues: MutableSet<Issue> = mutableSetOf()

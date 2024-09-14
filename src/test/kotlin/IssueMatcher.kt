@@ -1,5 +1,5 @@
 import com.github.valentinaebi.capybara.checks.Issue
-import com.github.valentinaebi.capybara.symbolicexecution.Check
+import com.github.valentinaebi.capybara.checks.Check
 
 data class IssueMatcher(
     val srcFileName: String,

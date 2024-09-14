@@ -1,9 +1,5 @@
-package com.github.valentinaebi.capybara.symbolicexecution
+package com.github.valentinaebi.capybara.values
 
-import com.github.valentinaebi.capybara.values.DoubleValue
-import com.github.valentinaebi.capybara.values.FloatValue
-import com.github.valentinaebi.capybara.values.Int32Value
-import com.github.valentinaebi.capybara.values.LongValue
 import io.ksmt.KContext
 import io.ksmt.expr.KExpr
 import io.ksmt.expr.KFpRoundingMode

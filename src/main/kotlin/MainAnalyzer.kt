@@ -4,9 +4,9 @@ import com.github.valentinaebi.capybara.checks.Reporter
 import com.github.valentinaebi.capybara.loading.readClassFilesInDirTrees
 import com.github.valentinaebi.capybara.solving.Solver
 import com.github.valentinaebi.capybara.solving.SubtypingRelationBuilder
-import com.github.valentinaebi.capybara.symbolicexecution.Checker
+import com.github.valentinaebi.capybara.checks.Checker
 import com.github.valentinaebi.capybara.symbolicexecution.Executor
-import com.github.valentinaebi.capybara.symbolicexecution.OperatorsContext
+import com.github.valentinaebi.capybara.values.OperatorsContext
 import com.github.valentinaebi.capybara.symbolicexecution.SymbolicInterpreter
 import com.github.valentinaebi.capybara.values.ValuesCreator
 import io.ksmt.KContext

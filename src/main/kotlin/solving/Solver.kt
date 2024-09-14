@@ -57,7 +57,7 @@ class Solver(private val ctx: KContext, private val valuesCreator: ValuesCreator
 
     fun saveArrayLength(array: ReferenceValue, length: Int32Value) {
         with(valuesCreator) {
-            ksmtSolver.assert(areEqualFormula(arrayLen(array), length))
+            ksmtSolver.assert(arrayLen(array) eq length)
         }
     }
 

@@ -1,11 +1,13 @@
 package com.github.valentinaebi.capybara.symbolicexecution
 
+import com.github.valentinaebi.capybara.ARITH_EXCEPTION
 import com.github.valentinaebi.capybara.ARRAY_IDX_OUT_OF_BOUNDS_EXCEPTION
 import com.github.valentinaebi.capybara.NEG_ARRAY_SIZE_EXCEPTION
 import com.github.valentinaebi.capybara.NULL_POINTER_EXCEPTION
 import com.github.valentinaebi.capybara.checks.Reporter
 import com.github.valentinaebi.capybara.solving.Solver
 import com.github.valentinaebi.capybara.values.Int32Value
+import com.github.valentinaebi.capybara.values.NumericValue
 import com.github.valentinaebi.capybara.values.ProgramValue
 import com.github.valentinaebi.capybara.values.ReferenceValue
 
@@ -18,6 +20,13 @@ class Checker(
         if (solver.canProveIsNull(value)) {
             reporter.report(check)
             throw ThrowEvent(NULL_POINTER_EXCEPTION)
+        }
+    }
+
+    fun divisorMustNotBeZero(divisor: NumericValue<*>){
+        if (solver.canProveIsZero(divisor)){
+            reporter.report(Check.DIV_BY_ZERO)
+            throw ThrowEvent(ARITH_EXCEPTION)
         }
     }
 

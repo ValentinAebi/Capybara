@@ -1,6 +1,7 @@
 package com.github.valentinaebi.capybara.solving
 
 import com.github.valentinaebi.capybara.values.Int32Value
+import com.github.valentinaebi.capybara.values.NumericValue
 import com.github.valentinaebi.capybara.values.ReferenceValue
 import com.github.valentinaebi.capybara.values.ValuesCreator
 import io.ksmt.KContext
@@ -37,6 +38,8 @@ class Solver(private val ctx: KContext, private val valuesCreator: ValuesCreator
         status == KSolverStatus.UNSAT
     }
 
+    fun canProveIsZero(v: NumericValue<*>): Boolean = canProve(true, valuesCreator.isZeroFormula(v))
+
     fun canProveIsOutOfBounds(array: ReferenceValue, idx: Int32Value): Boolean {
         return with(ctx) {
             with(valuesCreator) {
@@ -44,17 +47,13 @@ class Solver(private val ctx: KContext, private val valuesCreator: ValuesCreator
                     lessThanOrEqualToFormula(zero_int, idx),
                     lessThanFormula(idx, arrayLen(array))
                 )
-                val status = ksmtSolver.checkWithAssumptions(listOf(inBoundsFormula), timeout)
-                status == KSolverStatus.UNSAT
+                canProve(false, inBoundsFormula)
             }
         }
     }
 
-    fun canProveStrictlyNegative(value: Int32Value): Boolean {
-        val okFormula = ctx.mkNot(valuesCreator.isLessThanZeroFormula(value))
-        val status = ksmtSolver.checkWithAssumptions(listOf(okFormula), timeout)
-        return status == KSolverStatus.UNSAT
-    }
+    fun canProveStrictlyNegative(value: Int32Value): Boolean =
+        canProve(true, valuesCreator.isLessThanZeroFormula(value))
 
     fun saveArrayLength(array: ReferenceValue, length: Int32Value) {
         with(valuesCreator) {
@@ -77,5 +76,14 @@ class Solver(private val ctx: KContext, private val valuesCreator: ValuesCreator
     }
 
     fun isConsistent(): Boolean = ksmtSolver.check(timeout) == KSolverStatus.SAT
+
+    private fun canProve(desiredResult: Boolean, formula: KExpr<KBoolSort>): Boolean {
+        var smtInputFormula = formula
+        if (desiredResult) {
+            smtInputFormula = ctx.mkNot(smtInputFormula)
+        }
+        val solverResponse = ksmtSolver.checkWithAssumptions(listOf(smtInputFormula), timeout)
+        return solverResponse == KSolverStatus.UNSAT
+    }
 
 }

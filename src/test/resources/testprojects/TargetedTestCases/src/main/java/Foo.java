@@ -98,7 +98,7 @@ public class Foo {
         for (int j = 0; j < i; j++) {
             arr[j] = 2 * j + 1;
         }
-        int x = i*i;
+        int x = i * i;
         switch (i) {
             case 2:
             case 3:
@@ -125,11 +125,11 @@ public class Foo {
         for (int j = 0; j < i; j++) {
             arr[j] = 2 * j + 1;
         }
-        int x = i*i;
-        if (i == 100){
+        int x = i * i;
+        if (i == 100) {
             i += 1;
         }
-        if (o == null){
+        if (o == null) {
             i = 100;
         }
         switch (i) {
@@ -153,22 +153,37 @@ public class Foo {
         System.out.println(x);
     }
 
-    Bar[] arrayNegativeLen(int len, int[] indices){
-        if (len < -10){
+    Bar[] arrayNegativeLen(int len, int[] indices) {
+        if (len < -10) {
             throw new IllegalArgumentException();
-        } else if (len < -5){
+        } else if (len < -5) {
             System.err.println("Bad length for array");
         }
         for (int i = 0; i < len; i++) {
             System.out.println(i);
         }
-        if (len < -50){
+        if (len < -50) {
             return new Bar[-1];     // should be OK, unreachable
         }
-        if (len < -7){
+        if (len < -7) {
             return new Bar[len];    // #issue[NEG_ARRAY_LEN]
         }
         return new Bar[0];
+    }
+
+    int divByZero(int x, int y) {
+        return switch (x) {
+            case -1, 2 -> 12 / x;   // OK
+            case 1 -> {
+                var t = (y == 0) ?
+                        x / (y - 1) :
+                        y / (x - 1);    // #issue[DIV_BY_ZERO]
+                yield 2 * t;
+            }
+            default -> (x > -2 && x <= 2) ?
+                    (25 + 2 * y) % x :  // #issue[DIV_BY_ZERO] (if this is executed, then it must be that x == 0)
+                    x % y;
+        };
     }
 
 }

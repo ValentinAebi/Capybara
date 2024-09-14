@@ -215,12 +215,24 @@ class SymbolicInterpreter(
                     Opcodes.LMUL -> l.long() * r.long()
                     Opcodes.FMUL -> l.float() * r.float()
                     Opcodes.DMUL -> l.double() * r.double()
-                    Opcodes.IDIV -> l.int32() / r.int32()
-                    Opcodes.LDIV -> l.long() / r.long()
+                    Opcodes.IDIV -> {
+                        checker.divisorMustNotBeZero(r.int32())
+                        l.int32() / r.int32()
+                    }
+                    Opcodes.LDIV -> {
+                        checker.divisorMustNotBeZero(r.long())
+                        l.long() / r.long()
+                    }
                     Opcodes.FDIV -> l.float() / r.float()
                     Opcodes.DDIV -> l.double() / r.double()
-                    Opcodes.IREM -> l.int32() % r.int32()
-                    Opcodes.LREM -> l.long() % r.long()
+                    Opcodes.IREM -> {
+                        checker.divisorMustNotBeZero(r.int32())
+                        l.int32() % r.int32()
+                    }
+                    Opcodes.LREM -> {
+                        checker.divisorMustNotBeZero(r.long())
+                        l.long() % r.long()
+                    }
                     Opcodes.FREM -> l.float() % r.float()
                     Opcodes.DREM -> l.double() % r.double()
                     // TODO also interpret these operations

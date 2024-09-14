@@ -9,7 +9,10 @@ enum class Check(val msg: String) {
 
     // Arrays indices and length
     ARRAY_INDEX_OUT("array index might be out of bounds"),
-    NEG_ARRAY_LEN("array length might be negative")
+    NEG_ARRAY_LEN("array length might be negative"),
+
+    // Arithmetic
+    DIV_BY_ZERO("divisor might be zero")
 
     // TODO others
 }

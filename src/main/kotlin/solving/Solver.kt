@@ -24,6 +24,7 @@ class Solver(private val ctx: KContext, private val valuesCreator: ValuesCreator
                 listOf(arrayDecl)
             )
             ksmtSolver.assert(arrayLenIsNonNeg)
+            ksmtSolver.push()
         }
     }
 

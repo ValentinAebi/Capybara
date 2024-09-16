@@ -1,7 +1,6 @@
 package com.github.valentinaebi.capybara
 
-import com.github.valentinaebi.capybara.checks.Checker
-import com.github.valentinaebi.capybara.checks.Reporter
+import com.github.valentinaebi.capybara.checking.Reporter
 import com.github.valentinaebi.capybara.loading.readClassFilesInDirTrees
 import com.github.valentinaebi.capybara.solving.Solver
 import com.github.valentinaebi.capybara.solving.SubtypingRelationBuilder
@@ -26,7 +25,7 @@ fun main(args: Array<String>) {
 
     // Build CFGs
     timer.reset()
-    classes.forEach { it.methods.values.forEach { it.computeCfg() } }
+    classes.forEach { it.methods.values.forEach { it.computeCfgWithAssertions() } }
     val cfgComputationTime = timer.elapsedTime()
 
     // Display CFGs
@@ -51,8 +50,7 @@ fun main(args: Array<String>) {
     val valuesCreator = ValuesCreator(ctx)
     val operatorsContext = OperatorsContext(ctx)
     val solver = Solver(ctx, valuesCreator)
-    val checker = Checker(reporter, solver, ctx, valuesCreator)
-    val interpreter = SymbolicInterpreter(reporter, valuesCreator, operatorsContext, checker, solver)
+    val interpreter = SymbolicInterpreter(reporter, valuesCreator, operatorsContext, solver)
     val executor = Executor(interpreter, solver, ctx, valuesCreator, reporter)
     val symbolicExecutionSetupTime = timer.elapsedTime()
 
@@ -61,7 +59,11 @@ fun main(args: Array<String>) {
     for (clazz in classes) {
         reporter.currentClass = clazz
         for ((_, method) in clazz.methods) {
-            executor.execute(method)
+            if (!method.isAbstract) {
+                val summary = executor.execute(method)
+                println(summary)
+                println()
+            }
         }
     }
     val symbolicExecutionTime = timer.elapsedTime()

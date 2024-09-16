@@ -195,4 +195,8 @@ public class Foo {
         }
     }
 
+    int affineF(int x) {
+        return 2 * x + 1;
+    }
+
 }

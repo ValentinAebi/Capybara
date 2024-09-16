@@ -1,4 +1,4 @@
-import com.github.valentinaebi.capybara.checks.Check
+import com.github.valentinaebi.capybara.checking.Check
 import java.nio.file.Path
 import java.util.regex.Pattern
 

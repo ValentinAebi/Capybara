@@ -1,4 +1,4 @@
-package com.github.valentinaebi.capybara.checks
+package com.github.valentinaebi.capybara.checking
 
 import com.github.valentinaebi.capybara.UNKNOWN_LINE_NUMBER
 import com.github.valentinaebi.capybara.programstruct.Class

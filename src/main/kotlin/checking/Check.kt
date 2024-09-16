@@ -1,4 +1,4 @@
-package com.github.valentinaebi.capybara.checks
+package com.github.valentinaebi.capybara.checking
 
 import com.github.valentinaebi.capybara.ARITH_EXCEPTION
 import com.github.valentinaebi.capybara.ARRAY_IDX_OUT_OF_BOUNDS_EXCEPTION

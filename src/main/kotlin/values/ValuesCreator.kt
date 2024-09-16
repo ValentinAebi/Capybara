@@ -73,8 +73,8 @@ class ValuesCreator(private val ctx: KContext) {
     val two_float = mkFloatValue(2f)
     val zero_double = mkDoubleValue(0.0)
     val one_double = mkDoubleValue(1.0)
-    val nullValue = mkSymbolicRef()
-    val placeholderValue = mkSymbolicRef()
+    val nullValue = mkSymbolicRef("null")
+    val placeholderValue = mkSymbolicRef("placeholder")
 
     fun int2Float(v: Int32Value): FloatValue {
         val iVal = v.ksmtValue

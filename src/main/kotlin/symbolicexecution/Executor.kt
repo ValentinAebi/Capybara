@@ -1,6 +1,7 @@
 package com.github.valentinaebi.capybara.symbolicexecution
 
 import com.github.valentinaebi.capybara.UNKNOWN_LINE_NUMBER
+import com.github.valentinaebi.capybara.cfg.AssertionTerminator
 import com.github.valentinaebi.capybara.cfg.BasicBlock
 import com.github.valentinaebi.capybara.cfg.BasicBlockTerminator
 import com.github.valentinaebi.capybara.cfg.BinaryOperandStackPredicate
@@ -11,11 +12,12 @@ import com.github.valentinaebi.capybara.cfg.SingleSuccessorTerminator
 import com.github.valentinaebi.capybara.cfg.TableSwitchTerminator
 import com.github.valentinaebi.capybara.cfg.ThrowTerminator
 import com.github.valentinaebi.capybara.cfg.UnaryOperandStackPredicate
-import com.github.valentinaebi.capybara.checks.Reporter
+import com.github.valentinaebi.capybara.checking.Reporter
 import com.github.valentinaebi.capybara.programstruct.Method
 import com.github.valentinaebi.capybara.solving.Solver
 import com.github.valentinaebi.capybara.values.NumericValue
 import com.github.valentinaebi.capybara.values.ProgramValue
+import com.github.valentinaebi.capybara.values.ReferenceValue
 import com.github.valentinaebi.capybara.values.ValuesCreator
 import io.ksmt.KContext
 import io.ksmt.expr.KExpr
@@ -23,6 +25,7 @@ import io.ksmt.sort.KBoolSort
 import org.objectweb.asm.Type
 import org.objectweb.asm.tree.analysis.Frame
 
+private const val MAX_DEPTH = 100
 private const val MAX_EXEC_CNT_FOR_SAME_BLOCK = 8
 
 class Executor(
@@ -33,15 +36,18 @@ class Executor(
     private val reporter: Reporter
 ) {
 
-    fun execute(method: Method) {
-        if (method.isAbstract) {
-            return
-        }
+    fun execute(method: Method): MethodSummary {
         reporter.currentMethod = method
         val cfg = method.cfg!!
         val frame = Frame<ProgramValue>(method.numLocals!!, method.maxStack!!)
-        populateFrameWithParams(method, frame)
-        dfsExecute(cfg.initialBasicBlock!!, frame, null, 0, mutableMapOf())
+        val params = populateFrameWithParams(method, frame)
+        solver.push()
+        if (method.hasReceiver) {
+            solver.assert(ctx.mkNot(valuesCreator.areEqualFormula(params.first(), valuesCreator.nullValue)))
+        }
+        val results = dfsExecute(cfg.initialBasicBlock!!, frame, null, 0, mutableMapOf())
+        solver.pop()
+        return MethodSummary(method, params, results)
     }
 
     private fun dfsExecute(
@@ -50,33 +56,44 @@ class Executor(
         newAssumption: KExpr<KBoolSort>?,
         depth: Int,
         nExecPerBlock: MutableMap<BasicBlock, Int>
-    ) {
-        if (!nExecPerBlock.canExecute(block)) {
-            return
+    ): Map<KExpr<KBoolSort>, MethodResult> {
+        if (depth > MAX_DEPTH || !nExecPerBlock.allowsExecution(block)) {
+            return emptyMap()
         }
         interpreter.lineResolver = { block.insnList[it] ?: UNKNOWN_LINE_NUMBER }
         if (newAssumption != null) {
             solver.push()
             solver.assert(newAssumption)
         }
+        val results: MutableMap<KExpr<KBoolSort>, MethodResult> = mutableMapOf()
         if (solver.isConsistent()) {
             nExecPerBlock.incrementExecCnt(block)
-            try {
-                block.simulateInstructions(frame, interpreter)
-                val nextPaths = interpretTerminator(block.terminator, frame, ctx, valuesCreator)
-                for ((block, newConstraint) in nextPaths) {
-                    val newFrame = Frame<ProgramValue>(frame)
-                    dfsExecute(block, newFrame, newConstraint, depth + 1, nExecPerBlock)
+            block.simulateInstructions(frame, interpreter)
+            when (val terminatorRes = interpretTerminator(block.terminator, frame, ctx, valuesCreator)) {
+                is PossiblePaths -> {
+                    for ((block, newConstraint) in terminatorRes.regularPaths) {
+                        val newFrame = Frame<ProgramValue>(frame)
+                        val subResults = dfsExecute(block, newFrame, newConstraint, depth + 1, nExecPerBlock)
+                        results.putAll(subResults)
+                    }
+                    if (terminatorRes.exceptionAndCondition != null) {
+                        val (exc, failureCond) = terminatorRes.exceptionAndCondition
+                        val fullCond = ctx.mkAnd(failureCond, *solver.currentlyActiveFormulas.toTypedArray())
+                        results[fullCond] = ThrowResult(exc)
+                    }
                 }
-            } catch (_: ThrowEvent) {
-                // TODO also simulate exceptional paths
-            } finally {
-                nExecPerBlock.decrementExecCnt(block)
+
+                is Return -> {
+                    val cond = ctx.mkAnd(solver.currentlyActiveFormulas)
+                    results[cond] = ReturnResult(terminatorRes.returnedValue)
+                }
             }
+            nExecPerBlock.decrementExecCnt(block)
         }
         if (newAssumption != null) {
             solver.pop()
         }
+        return results
     }
 
     private fun interpretTerminator(
@@ -84,38 +101,41 @@ class Executor(
         frame: Frame<ProgramValue>,
         ctx: KContext,
         valuesCreator: ValuesCreator
-    ): List<Pair<BasicBlock, KExpr<KBoolSort>?>> = with(ctx) {
+    ): TerminatorInterpretationResult = with(ctx) {
         with(valuesCreator) {
             return when {
 
                 terminator is IteTerminator && terminator.cond is UnaryOperandStackPredicate -> {
                     val value = frame.pop()
                     val constraint = constraintFor(terminator.cond, value, valuesCreator)
-                    listOf(
+                    val paths = listOf(
                         terminator.successorIfTrue to constraint,
                         terminator.successorIfFalse to ctx.mkNot(constraint)
                     )
+                    PossiblePaths(paths, null)
                 }
 
                 terminator is IteTerminator && terminator.cond is BinaryOperandStackPredicate -> {
                     val r = frame.pop()
                     val l = frame.pop()
                     val constraint = constraintFor(terminator.cond, l, r, valuesCreator)
-                    listOf(
+                    val paths = listOf(
                         terminator.successorIfTrue to constraint,
                         terminator.successorIfFalse to mkNot(constraint)
                     )
+                    PossiblePaths(paths, null)
                 }
 
                 terminator is ReturnTerminator -> {
-                    if (terminator.mustPopValue) {
-                        frame.pop()
-                    }
+                    val result = if (terminator.mustPopValue) frame.pop() else null
                     assert(frame.stackSize == 0)
-                    emptyList()
+                    Return(result)
                 }
 
-                terminator is SingleSuccessorTerminator -> listOf(terminator.successor to null)
+                terminator is SingleSuccessorTerminator -> PossiblePaths(
+                    listOf(terminator.successor to ctx.mkTrue()),
+                    null
+                )
 
                 terminator is TableSwitchTerminator -> {
                     val selector = frame.pop().int32().ksmtValue
@@ -135,7 +155,7 @@ class Executor(
                     }
                     conditionsLeadingToDefault.add(mkArithLt(key.expr, selector))
                     nextPaths.add(dflt to mkOr(conditionsLeadingToDefault))
-                    nextPaths
+                    PossiblePaths(nextPaths, null)
                 }
 
                 terminator is LookupSwitchTerminator -> {
@@ -149,13 +169,27 @@ class Executor(
                     val conditionsLeadingToNonDefault = nextPaths.map { it.second }
                     val defaultCond = mkNot(mkOr(conditionsLeadingToNonDefault))
                     nextPaths.add(terminator.default to defaultCond)
-                    nextPaths
+                    PossiblePaths(nextPaths, null)
                 }
 
                 terminator == ThrowTerminator -> {
-                    frame.pop()
-                    // TODO consider catches (and pop the right number of times)
-                    emptyList()
+                    val exception = frame.pop().ref()
+                    PossiblePaths(emptyList(), exception to ctx.mkTrue())
+                }
+
+                terminator is AssertionTerminator -> {
+                    val correctnessFormula = terminator.mkCorrectnessFormula(frame, valuesCreator, ctx)
+                    val failureFormula = ctx.mkNot(correctnessFormula)
+                    val exception = valuesCreator.mkSymbolicRef("intrinsic_exception")
+                    val canProveFailure = solver.canProve(failureFormula)
+                    if (canProveFailure) {
+                        reporter.report(terminator.check)
+                    }
+                    val canProveSuccess = !canProveFailure && solver.canProve(correctnessFormula)
+                    PossiblePaths(
+                        listOf(terminator.successor to correctnessFormula),
+                        if (canProveSuccess || canProveFailure) null else exception to failureFormula
+                    )
                 }
 
                 else -> throw AssertionError("unexpected terminator: ${terminator.fullDescr()}")
@@ -163,6 +197,15 @@ class Executor(
 
         }
     }
+
+    private sealed interface TerminatorInterpretationResult
+
+    private data class PossiblePaths(
+        val regularPaths: List<Pair<BasicBlock, KExpr<KBoolSort>>>,
+        val exceptionAndCondition: Pair<ReferenceValue, KExpr<KBoolSort>>?
+    ) : TerminatorInterpretationResult
+
+    private data class Return(val returnedValue: ProgramValue?) : TerminatorInterpretationResult
 
     private fun constraintFor(
         pred: UnaryOperandStackPredicate,
@@ -196,17 +239,23 @@ class Executor(
     private fun populateFrameWithParams(
         method: Method,
         frame: Frame<ProgramValue>
-    ) {
-        val argTypes = Type.getType(method.methodNode.desc).argumentTypes
+    ): List<ProgramValue> {
+        val params = mutableListOf<ProgramValue>()
         var localIdx = 0
         if (method.hasReceiver) {
-            frame.setLocal(localIdx, valuesCreator.mkSymbolicRef("recv"))
+            val receiverParam = valuesCreator.mkSymbolicRef("recv")
+            params.add(receiverParam)
+            frame.setLocal(localIdx, receiverParam)
             localIdx += 1
         }
-        for ((idx, argType) in argTypes.withIndex()) {
-            frame.setLocal(localIdx, valuesCreator.mkSymbolicValue(argType.sort, "arg$idx"))
-            localIdx += argType.size
+        val paramTypes = Type.getType(method.methodNode.desc).argumentTypes
+        for ((idx, paramType) in paramTypes.withIndex()) {
+            val param = valuesCreator.mkSymbolicValue(paramType.sort, "arg$idx")
+            params.add(param)
+            frame.setLocal(localIdx, param)
+            localIdx += paramType.size
         }
+        return params
     }
 
     private fun MutableMap<BasicBlock, Int>.incrementExecCnt(block: BasicBlock) {
@@ -218,7 +267,7 @@ class Executor(
         this[block] = this[block]!! - 1
     }
 
-    private fun MutableMap<BasicBlock, Int>.canExecute(block: BasicBlock): Boolean {
+    private fun MutableMap<BasicBlock, Int>.allowsExecution(block: BasicBlock): Boolean {
         val cnt = this[block]
         return cnt == null || cnt < MAX_EXEC_CNT_FOR_SAME_BLOCK
     }

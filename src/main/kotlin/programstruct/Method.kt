@@ -2,6 +2,7 @@ package com.github.valentinaebi.capybara.programstruct
 
 import com.github.valentinaebi.capybara.cfg.Cfg
 import com.github.valentinaebi.capybara.cfg.buildCfg
+import com.github.valentinaebi.capybara.checking.insertAssertions
 import org.objectweb.asm.tree.MethodNode
 
 data class Method(
@@ -18,11 +19,12 @@ data class Method(
     var cfg: Cfg? = null
         private set
 
-    fun computeCfg() {
+    fun computeCfgWithAssertions() {
         if (cfg != null) {
             throw IllegalStateException("CFG has already been computed")
         }
-        cfg = buildCfg(methodNode)
+        val augmentedInstructions = insertAssertions(methodNode.instructions.toArray())
+        cfg = buildCfg(augmentedInstructions, methodNode.tryCatchBlocks)
     }
 
 }

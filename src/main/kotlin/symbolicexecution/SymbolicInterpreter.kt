@@ -1,9 +1,7 @@
 package com.github.valentinaebi.capybara.symbolicexecution
 
 import com.github.valentinaebi.capybara.API_LEVEL
-import com.github.valentinaebi.capybara.checks.Check
-import com.github.valentinaebi.capybara.checks.Checker
-import com.github.valentinaebi.capybara.checks.Reporter
+import com.github.valentinaebi.capybara.checking.Reporter
 import com.github.valentinaebi.capybara.solving.Solver
 import com.github.valentinaebi.capybara.values.Int32Value
 import com.github.valentinaebi.capybara.values.LongValue
@@ -26,7 +24,6 @@ class SymbolicInterpreter(
     private val reporter: Reporter,
     private val valuesCreator: ValuesCreator,
     private val operatorsContext: OperatorsContext,
-    private val checker: Checker,
     private val solver: Solver
 ) : Interpreter<ProgramValue>(API_LEVEL) {
 
@@ -136,14 +133,12 @@ class SymbolicInterpreter(
                     }
 
                     Opcodes.GETFIELD -> {
-                        checker.mustBeNonNull(value.ref(), Check.FLD_NULL_OWNER)
                         val fieldInsnNode = insn as FieldInsnNode
                         // TODO check if object is owned
                         mkSymbolicValue(fieldInsnNode.desc)
                     }
 
                     Opcodes.NEWARRAY, Opcodes.ANEWARRAY -> {
-                        checker.arrayLenMustBeNonNegative(value.int32())
                         val array = mkSymbolicRef()
                         solver.saveArrayLength(array, value.int32())
                         // TODO add to owned objects
@@ -181,30 +176,15 @@ class SymbolicInterpreter(
                 val opcode = insn.opcode
                 when (opcode) {
                     // TODO load value if array is owned
-                    Opcodes.IALOAD, Opcodes.BALOAD, Opcodes.CALOAD, Opcodes.SALOAD -> {
-                        checker.arrayIndexingPrecondition(l, r)
-                        mkSymbolicInt32()
-                    }
+                    Opcodes.IALOAD, Opcodes.BALOAD, Opcodes.CALOAD, Opcodes.SALOAD -> mkSymbolicInt32()
 
-                    Opcodes.LALOAD -> {
-                        checker.arrayIndexingPrecondition(l, r)
-                        mkSymbolicLong()
-                    }
+                    Opcodes.LALOAD -> mkSymbolicLong()
 
-                    Opcodes.FALOAD -> {
-                        checker.arrayIndexingPrecondition(l, r)
-                        mkSymbolicFloat()
-                    }
+                    Opcodes.FALOAD -> mkSymbolicFloat()
 
-                    Opcodes.DALOAD -> {
-                        checker.arrayIndexingPrecondition(l, r)
-                        mkSymbolicDouble()
-                    }
+                    Opcodes.DALOAD -> mkSymbolicDouble()
 
-                    Opcodes.AALOAD -> {
-                        checker.arrayIndexingPrecondition(l, r)
-                        mkSymbolicRef()
-                    }
+                    Opcodes.AALOAD -> mkSymbolicRef()
 
                     Opcodes.IADD -> l.int32() + r.int32()
                     Opcodes.LADD -> l.long() + r.long()
@@ -218,24 +198,12 @@ class SymbolicInterpreter(
                     Opcodes.LMUL -> l.long() * r.long()
                     Opcodes.FMUL -> l.float() * r.float()
                     Opcodes.DMUL -> l.double() * r.double()
-                    Opcodes.IDIV -> {
-                        checker.divisorMustNotBeZero(r.int32())
-                        l.int32() / r.int32()
-                    }
-                    Opcodes.LDIV -> {
-                        checker.divisorMustNotBeZero(r.long())
-                        l.long() / r.long()
-                    }
+                    Opcodes.IDIV -> l.int32() / r.int32()
+                    Opcodes.LDIV -> l.long() / r.long()
                     Opcodes.FDIV -> l.float() / r.float()
                     Opcodes.DDIV -> l.double() / r.double()
-                    Opcodes.IREM -> {
-                        checker.divisorMustNotBeZero(r.int32())
-                        l.int32() % r.int32()
-                    }
-                    Opcodes.LREM -> {
-                        checker.divisorMustNotBeZero(r.long())
-                        l.long() % r.long()
-                    }
+                    Opcodes.IREM -> l.int32() % r.int32()
+                    Opcodes.LREM -> l.long() % r.long()
                     Opcodes.FREM -> l.float() % r.float()
                     Opcodes.DREM -> l.double() % r.double()
                     // TODO also interpret these operations
@@ -259,7 +227,6 @@ class SymbolicInterpreter(
                     Opcodes.DCMPL -> mkSymbolicInt32()
                     Opcodes.DCMPG -> mkSymbolicInt32()
                     Opcodes.PUTFIELD -> {
-                        checker.mustBeNonNull(l.ref(), Check.FLD_NULL_OWNER)
                         // TODO mark as leaked
                         placeholderValue
                     }
@@ -281,7 +248,6 @@ class SymbolicInterpreter(
         requireNotNull(value2)
         requireNotNull(value3)
         /* IASTORE, LASTORE, FASTORE, DASTORE, AASTORE, BASTORE, CASTORE, SASTORE */
-        checker.arrayIndexingPrecondition(value1, value2)
         // TODO save if array is owned
         return valuesCreator.placeholderValue
     }
@@ -295,9 +261,6 @@ class SymbolicInterpreter(
                 val opcode = insn.opcode
                 when (opcode) {
                     in Opcodes.INVOKEVIRTUAL..Opcodes.INVOKEINTERFACE -> {
-                        if (opcode != Opcodes.INVOKESTATIC) {
-                            checker.mustBeNonNull(values.first().ref(), Check.INVK_NULL_REC)
-                        }
                         val methodDesc = (insn as MethodInsnNode).desc
                         val retType = Type.getReturnType(methodDesc)
                         if (retType == Type.VOID_TYPE) placeholderValue else mkSymbolicValue(retType.sort)

@@ -1,15 +1,14 @@
 import com.github.valentinaebi.capybara.OBJECT
 import com.github.valentinaebi.capybara.STRING
-import com.github.valentinaebi.capybara.checks.Issue
-import com.github.valentinaebi.capybara.checks.Reporter
+import com.github.valentinaebi.capybara.checking.Issue
+import com.github.valentinaebi.capybara.checking.Reporter
 import com.github.valentinaebi.capybara.loading.readClassFile
 import com.github.valentinaebi.capybara.solving.Solver
 import com.github.valentinaebi.capybara.solving.SubtypingRelation
 import com.github.valentinaebi.capybara.solving.SubtypingRelationBuilder
-import com.github.valentinaebi.capybara.checks.Checker
 import com.github.valentinaebi.capybara.symbolicexecution.Executor
-import com.github.valentinaebi.capybara.values.OperatorsContext
 import com.github.valentinaebi.capybara.symbolicexecution.SymbolicInterpreter
+import com.github.valentinaebi.capybara.values.OperatorsContext
 import com.github.valentinaebi.capybara.values.ValuesCreator
 import io.ksmt.KContext
 import org.apache.maven.shared.invoker.DefaultInvocationRequest
@@ -41,12 +40,11 @@ class ProjectsTests {
         val valuesCreator = ValuesCreator(ctx)
         val operatorsContext = OperatorsContext(ctx)
         val solver = Solver(ctx, valuesCreator)
-        val checker = Checker(reporter, solver, ctx, valuesCreator)
-        val interpreter = SymbolicInterpreter(reporter, valuesCreator, operatorsContext, checker, solver)
+        val interpreter = SymbolicInterpreter(reporter, valuesCreator, operatorsContext, solver)
         val executor = Executor(interpreter, solver, ctx, valuesCreator, reporter)
 
         for (method in fooClass.methods.values) {
-            method.computeCfg()
+            method.computeCfgWithAssertions()
             executor.execute(method)
         }
 

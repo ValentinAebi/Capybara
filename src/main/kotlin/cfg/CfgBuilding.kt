@@ -17,7 +17,6 @@ import org.objectweb.asm.tree.JumpInsnNode
 import org.objectweb.asm.tree.LabelNode
 import org.objectweb.asm.tree.LineNumberNode
 import org.objectweb.asm.tree.LookupSwitchInsnNode
-import org.objectweb.asm.tree.MethodNode
 import org.objectweb.asm.tree.TableSwitchInsnNode
 import org.objectweb.asm.tree.TryCatchBlockNode
 import org.objectweb.asm.tree.analysis.AnalyzerException
@@ -28,10 +27,10 @@ import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.contract
 
 
-fun buildCfg(methodNode: MethodNode): Cfg {
+// FIXME always iterate on the whole list of instructions instead of using next
 
-    val instructions = methodNode.instructions.toArray()
-    val tryCatchBlocks = methodNode.tryCatchBlocks
+
+fun buildCfg(instructions: List<AbstractInsnNode>, tryCatchBlocks: List<TryCatchBlockNode>): Cfg {
 
     if (instructions.isEmpty()) {
         return Cfg(emptyList(), emptyList())
@@ -60,7 +59,7 @@ fun buildCfg(methodNode: MethodNode): Cfg {
 
     // 3rd pass: collect labels identifying each basic block
     val labelsToBasicBlocks = collectLabelsPrecedingBasicBlockStarts(
-        instructions.first(),
+        instructions,
         blockStartingAtInsn
     )
 
@@ -72,7 +71,7 @@ fun buildCfg(methodNode: MethodNode): Cfg {
 
     // 4th pass: build actual basic blocks
     val basicBlocks = buildBasicBlocks(
-        instructions.first(),
+        instructions,
         blockStartingAtInsn,
         catches,
         labelsToBasicBlocks,
@@ -103,23 +102,21 @@ private fun collectTryCatchLabels(
 }
 
 private fun findBlocksAndLinesAndBuildTryHierarchy(
-    instructions: Array<AbstractInsnNode>,
+    instructions: List<AbstractInsnNode>,
     jumpTargetLabels: Set<LabelNode>,
     tryStartLabels: Map<Label, List<TryCatchBlockNode>>,
     tryEndLabels: Map<Label, List<TryCatchBlockNode>>,
     tryHandlerLabels: Set<Label>
 ): Triple<Array<BasicBlock?>, Map<TryCatchBlockNode, TryCatchBlockNode?>, Map<Label, Int>> {
-    val blockStartingAtInsn = Array<BasicBlock?>(instructions.size) { null }
+    val blockStartingAtInsn = arrayOfNulls<BasicBlock>(instructions.size)
     val tryBlockToParent = mutableMapOf<TryCatchBlockNode, TryCatchBlockNode?>()
     val labelsToLineNumbers = mutableMapOf<Label, Int>()
-    var currInsn: AbstractInsnNode? = instructions[0]
-    var currInsnIdx = 0
     var currentTryBlock: TryCatchBlockNode? = null
     blockStartingAtInsn[0] = newPlaceholderBlock()
-    while (currInsn != null) {
+    for ((currInsnIdx, currInsn) in instructions.withIndex()) {
         val opcode = currInsn.opcode
         if (opcode == Opcodes.RET || opcode == Opcodes.JSR) {
-            throw AnalyzerException(currInsn, "unsupported Java <7 instruction")
+            throw AnalyzerException(currInsn, "unsupported Java <7 instruction (JSR, RET)")
         }
         if (currInsn is LabelNode) {
             tryStartLabels[currInsn.label]?.let {
@@ -136,8 +133,9 @@ private fun findBlocksAndLinesAndBuildTryHierarchy(
             }
         } else if (currInsn is LineNumberNode) {
             labelsToLineNumbers[currInsn.start.label] = currInsn.line
-        }
-        if (currInsnIdx < instructions.size - 1 && blockStartingAtInsn[currInsnIdx + 1] == null && (
+        } else if (currInsn is AssertionTerminator){
+            blockStartingAtInsn[currInsnIdx + 1] = currInsn.successor
+        } else if (currInsnIdx < instructions.size - 1 && blockStartingAtInsn[currInsnIdx + 1] == null && (
                     currInsn.type == AbstractInsnNode.JUMP_INSN
                             || isSwitchOpcode(opcode)
                             || isReturnOpcode(opcode)
@@ -156,21 +154,17 @@ private fun findBlocksAndLinesAndBuildTryHierarchy(
                 blockStartingAtInsn[predIdx + 1] = newPlaceholderBlock()
             }
         }
-        currInsn = currInsn.next
-        currInsnIdx += 1
     }
     return Triple(blockStartingAtInsn, tryBlockToParent, labelsToLineNumbers)
 }
 
 private fun collectLabelsPrecedingBasicBlockStarts(
-    firstInstruction: AbstractInsnNode,
+    instructions: List<AbstractInsnNode>,
     blockStartingAtInsn: Array<BasicBlock?>
 ): Map<Label, BasicBlock> {
     val labelsToBasicBlock = mutableMapOf<Label, BasicBlock>()
     var currBasicBlock: BasicBlock? = null
-    var currInsn: AbstractInsnNode? = firstInstruction
-    var currInsnIdx = 0
-    while (currInsn != null) {
+    for ((currInsnIdx, currInsn) in instructions.withIndex()) {
         blockStartingAtInsn[currInsnIdx]?.let {
             currBasicBlock = it
         }
@@ -179,14 +173,12 @@ private fun collectLabelsPrecedingBasicBlockStarts(
         } else if (currBasicBlock != null && currInsn is LabelNode) {
             labelsToBasicBlock[currInsn.label] = currBasicBlock
         }
-        currInsn = currInsn.next
-        currInsnIdx += 1
     }
     return labelsToBasicBlock
 }
 
 private fun buildBasicBlocks(
-    firstInstruction: AbstractInsnNode,
+    instructions: List<AbstractInsnNode>,
     blockStartingAtInsn: Array<BasicBlock?>,
     catches: LinkedHashMap<TryCatchBlockNode, Catch>,
     labelsToBasicBlocks: Map<Label, BasicBlock>,
@@ -196,8 +188,8 @@ private fun buildBasicBlocks(
 ): Map<BasicBlock, BasicBlock> {
 
     val basicBlocks = mutableMapOf<BasicBlock, BasicBlock>()
-
-    var currInsn: AbstractInsnNode? = firstInstruction
+    val iter = instructions.iterator()
+    var currInsn: AbstractInsnNode? = iter.next()
     var currInsnIdx = 0
     var currCatch: Catch? = null
     var currLineNumber = UNKNOWN_LINE_NUMBER
@@ -227,7 +219,7 @@ private fun buildBasicBlocks(
                 blockInsns.put(currInsn, currLineNumber)
                 indexOfLastInsnAddedToBlock = currInsnIdx
             }
-            currInsn = currInsn.next
+            currInsn = if (iter.hasNext()) iter.next() else null
             currInsnIdx += 1
         }
 
@@ -258,15 +250,14 @@ private fun computeTerminator(
 ): BasicBlockTerminator {
 
     fun nextBasicBlock(): BasicBlock {
-        var currInsn: AbstractInsnNode? = lastInsnInBlock.next
         var currInsnIdx = idxOfLastInsnInBlock + 1
-        while (currInsn != null) {
+        while (true) {
             val maybeBlock = blockStartingAtInsn[currInsnIdx]
             if (maybeBlock != null) {
                 return maybeBlock
             }
+            currInsnIdx += 1
         }
-        throw AssertionError("method does not end with a return instruction")
     }
 
     val opcode = lastInsnInBlock.opcode
@@ -313,6 +304,10 @@ private fun computeTerminator(
             }
             val default = labelsToBasicBlocks[lastInsnInBlock.dflt.label]!!
             return LookupSwitchTerminator(cases, default)
+        }
+
+        lastInsnInBlock is AssertionTerminator -> {
+            return lastInsnInBlock
         }
 
         else -> return SingleSuccessorTerminator(nextBasicBlock())

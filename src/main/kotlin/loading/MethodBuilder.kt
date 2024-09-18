@@ -40,6 +40,7 @@ class MethodBuilder(
 
     override fun visitEnd() {
         classMethods[methodNode.name] = Method(
+            methodId,
             methodNode,
             mayBeOverridden,
             hasReceiver,

@@ -33,12 +33,13 @@ fun main(args: Array<String>) {
     for (clazz in classes) {
         val className = clazz.className
         println("START CLASS $className")
-        for ((methodName, method) in clazz.methods) {
-            println("|\tMETHOD $className::$methodName")
+        for (method in clazz.methods.values) {
+            val methodId = method.methodId
+            println("|\tSTART METHOD $methodId")
             for (bb in method.cfg!!.basicBlocks) {
                 println(bb.fullDescr().prependIndent("|\t¦\t"))
             }
-            println("|\tEND METHOD $className::$methodName\n|")
+            println("|\tEND METHOD $methodId\n|")
         }
         println("END CLASS $className\n\n")
     }

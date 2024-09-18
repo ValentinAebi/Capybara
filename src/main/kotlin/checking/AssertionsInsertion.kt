@@ -4,7 +4,7 @@ import com.github.valentinaebi.capybara.cfg.AssertInBoundsTerminator
 import com.github.valentinaebi.capybara.cfg.AssertNonNullTerminator
 import com.github.valentinaebi.capybara.cfg.AssertValidArrayLengthTerminator
 import com.github.valentinaebi.capybara.cfg.BasicBlock
-import com.github.valentinaebi.capybara.cfg.IsValidDivisorTerminator
+import com.github.valentinaebi.capybara.cfg.AssertValidDivisorTerminator
 import com.github.valentinaebi.capybara.cfg.ReturnTerminator
 import com.github.valentinaebi.capybara.cfg.SingleSuccessorTerminator
 import com.github.valentinaebi.capybara.cfg.TerminatorInsnAdapter
@@ -51,7 +51,7 @@ fun insertAssertions(instructions: Array<AbstractInsnNode>): List<AbstractInsnNo
             }
 
             Opcodes.IDIV, Opcodes.LDIV, Opcodes.IREM, Opcodes.LREM -> {
-                addTerminatorInsn(IsValidDivisorTerminator(newPlaceholderBlock()))
+                addTerminatorInsn(AssertValidDivisorTerminator(newPlaceholderBlock()))
             }
 
         }

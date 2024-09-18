@@ -34,6 +34,12 @@ class Solver(private val ctx: KContext, private val valuesCreator: ValuesCreator
         }
     }
 
+    fun saveNonNull(v: ReferenceValue) {
+        with(valuesCreator) {
+            assert(ctx.mkNot(v eq nullValue))
+        }
+    }
+
     fun push() {
         pushLevel += 1
         ksmtSolver.push()

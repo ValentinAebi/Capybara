@@ -85,6 +85,7 @@ class SymbolicInterpreter(
                 Opcodes.NEW -> {
                     val typeDescriptor = (insn as TypeInsnNode).desc
                     val newObj = mkSymbolicRef()
+                    solver.saveNonNull(newObj)
                     // TODO save type
                     newObj
                 }
@@ -140,6 +141,7 @@ class SymbolicInterpreter(
 
                     Opcodes.NEWARRAY, Opcodes.ANEWARRAY -> {
                         val array = mkSymbolicRef()
+                        solver.saveNonNull(array)
                         solver.saveArrayLength(array, value.int32())
                         // TODO add to owned objects
                         array
@@ -147,6 +149,7 @@ class SymbolicInterpreter(
 
                     Opcodes.ARRAYLENGTH -> valuesCreator.arrayLen(value.ref())
                     Opcodes.CHECKCAST -> {
+                        // TODO should be a terminating instruction
                         // TODO check cast is possible
                         // TODO save new type
                         value

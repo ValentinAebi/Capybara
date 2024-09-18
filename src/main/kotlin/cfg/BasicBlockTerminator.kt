@@ -1,6 +1,7 @@
 package com.github.valentinaebi.capybara.cfg
 
 import com.github.valentinaebi.capybara.checking.Check
+import com.github.valentinaebi.capybara.programstruct.MethodIdentifier
 import com.github.valentinaebi.capybara.values.NumericValue
 import com.github.valentinaebi.capybara.values.ProgramValue
 import com.github.valentinaebi.capybara.values.ValuesCreator
@@ -124,18 +125,14 @@ class LookupSwitchTerminator(
 }
 
 class MethodInvocationTerminator(
-    val methodName: String,
+    val methodId: MethodIdentifier,
     val isDynamicallyDispatched: Boolean,
     successorBlock: BasicBlock
 ) : SingleSuccessorTerminator(successorBlock) {
 
-    override fun resolve(resolver: Map<BasicBlock, BasicBlock>) {
-        TODO("Not yet implemented")
-    }
-
-    override fun fullDescr(): String {
-        TODO("Not yet implemented")
-    }
+    override fun toString(): String = "invoke $methodId"
+    override fun fullDescr(): String =
+        "invoke $methodId (${if (isDynamicallyDispatched) "dynamic" else "static"}) ; goto $successor"
 }
 
 sealed class AssertionTerminator(successorBlock: BasicBlock) : SingleSuccessorTerminator(successorBlock) {
@@ -218,7 +215,7 @@ class AssertValidArrayLengthTerminator(successor: BasicBlock, private val nDimen
     override fun fullDescr(): String = "array length non-negativity check ; goto $successor ($check)"
 }
 
-class IsValidDivisorTerminator(successor: BasicBlock) : AssertionTerminator(successor) {
+class AssertValidDivisorTerminator(successor: BasicBlock) : AssertionTerminator(successor) {
 
     override val check: Check = Check.DIV_BY_ZERO
 

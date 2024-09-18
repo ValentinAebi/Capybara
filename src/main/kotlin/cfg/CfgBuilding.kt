@@ -27,9 +27,6 @@ import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.contract
 
 
-// FIXME always iterate on the whole list of instructions instead of using next
-
-
 fun buildCfg(instructions: List<AbstractInsnNode>, tryCatchBlocks: List<TryCatchBlockNode>): Cfg {
 
     if (instructions.isEmpty()) {

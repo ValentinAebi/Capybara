@@ -195,8 +195,22 @@ public class Foo {
         }
     }
 
-    int affineF(int x) {
+    static int affineF(int x) {
         return 2 * x + 1;
+    }
+
+    static int min(int x, int y) {
+        return (x <= y) ? x : y;
+    }
+
+    static int g(int n) {
+        if (n < 0) {
+            throw new IllegalArgumentException();
+        }
+        if (n == 0) {
+            return -1;
+        }
+        return g(n - 1);
     }
 
 }

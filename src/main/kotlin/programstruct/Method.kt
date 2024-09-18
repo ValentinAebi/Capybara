@@ -12,6 +12,7 @@ fun mkMethodIdentifier(className: InternalName, methodName: String, descriptor: 
     "$className#$methodName$descriptor"
 
 data class Method(
+    val methodId: MethodIdentifier,
     val methodNode: MethodNode,
     val mayBeOverridden: Boolean,
     val hasReceiver: Boolean,

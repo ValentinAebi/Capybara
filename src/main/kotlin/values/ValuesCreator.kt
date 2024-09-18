@@ -171,7 +171,7 @@ class ValuesCreator(private val ctx: KContext) {
             l is FloatValue && r is FloatValue -> l eq r
             l is DoubleValue && r is DoubleValue -> l eq r
             l is ReferenceValue && r is ReferenceValue -> l eq r
-            else -> throw AssertionError("wrong operand types: ${l::class.simpleName} == ${r::class.simpleName}")
+            else -> throw AssertionError("mismatched operand types: ${l::class.simpleName} == ${r::class.simpleName}")
         }
     }
 

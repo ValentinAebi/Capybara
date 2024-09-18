@@ -133,7 +133,7 @@ private fun findBlocksAndLinesAndBuildTryHierarchy(
             }
         } else if (currInsn is LineNumberNode) {
             labelsToLineNumbers[currInsn.start.label] = currInsn.line
-        } else if (currInsn is AssertionTerminator){
+        } else if (currInsn is TerminatorInsnAdapter) {
             blockStartingAtInsn[currInsnIdx + 1] = currInsn.successor
         } else if (currInsnIdx < instructions.size - 1 && blockStartingAtInsn[currInsnIdx + 1] == null && (
                     currInsn.type == AbstractInsnNode.JUMP_INSN
@@ -231,7 +231,7 @@ private fun buildBasicBlocks(
                 labelsToBasicBlocks,
                 blockStartingAtInsn
             )
-            if (lastInsnInBlock.opcode == Opcodes.GOTO || terminator !is SingleSuccessorTerminator) {
+            if (lastInsnInBlock.opcode == Opcodes.GOTO || terminator !is GotoTerminator) {
                 blockInsns.remove(lastInsnInBlock)
             }
             val placeholderBlock = blockStartingAtInsn[indexOfFirstInsnInCurrBlock]!!
@@ -282,7 +282,7 @@ private fun computeTerminator(
                 Opcodes.IF_ICMPGE -> IteTerminator(LessThan, nextBasicBlock(), labelTarget)
                 Opcodes.IF_ICMPGT -> IteTerminator(GreaterThan, labelTarget, nextBasicBlock())
                 Opcodes.IF_ICMPLE -> IteTerminator(GreaterThan, nextBasicBlock(), labelTarget)
-                Opcodes.GOTO -> SingleSuccessorTerminator(labelsToBasicBlocks[lastInsnInBlock.label.label]!!)
+                Opcodes.GOTO -> GotoTerminator(labelsToBasicBlocks[lastInsnInBlock.label.label]!!)
                 Opcodes.IFNULL -> IteTerminator(IsNull, labelTarget, nextBasicBlock())
                 Opcodes.IFNONNULL -> IteTerminator(IsNull, nextBasicBlock(), labelTarget)
                 else -> throw AssertionError("unexpected opcode: ${Printer.OPCODES[opcode]}")
@@ -306,11 +306,11 @@ private fun computeTerminator(
             return LookupSwitchTerminator(cases, default)
         }
 
-        lastInsnInBlock is AssertionTerminator -> {
-            return lastInsnInBlock
+        lastInsnInBlock is TerminatorInsnAdapter -> {
+            return lastInsnInBlock.terminator
         }
 
-        else -> return SingleSuccessorTerminator(nextBasicBlock())
+        else -> return GotoTerminator(nextBasicBlock())
     }
 }
 

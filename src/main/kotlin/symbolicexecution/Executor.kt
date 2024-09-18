@@ -8,7 +8,8 @@ import com.github.valentinaebi.capybara.cfg.BinaryOperandStackPredicate
 import com.github.valentinaebi.capybara.cfg.IteTerminator
 import com.github.valentinaebi.capybara.cfg.LookupSwitchTerminator
 import com.github.valentinaebi.capybara.cfg.ReturnTerminator
-import com.github.valentinaebi.capybara.cfg.SingleSuccessorTerminator
+import com.github.valentinaebi.capybara.cfg.GotoTerminator
+import com.github.valentinaebi.capybara.cfg.MethodInvocationTerminator
 import com.github.valentinaebi.capybara.cfg.TableSwitchTerminator
 import com.github.valentinaebi.capybara.cfg.ThrowTerminator
 import com.github.valentinaebi.capybara.cfg.UnaryOperandStackPredicate
@@ -56,16 +57,16 @@ class Executor(
         newAssumption: KExpr<KBoolSort>?,
         depth: Int,
         nExecPerBlock: MutableMap<BasicBlock, Int>
-    ): Map<KExpr<KBoolSort>, MethodResult> {
+    ): List<Pair<KExpr<KBoolSort>, MethodResult>> {
         if (depth > MAX_DEPTH || !nExecPerBlock.allowsExecution(block)) {
-            return emptyMap()
+            return emptyList()
         }
         interpreter.lineResolver = { block.insnList[it] ?: UNKNOWN_LINE_NUMBER }
         if (newAssumption != null) {
             solver.push()
             solver.assert(newAssumption)
         }
-        val results: MutableMap<KExpr<KBoolSort>, MethodResult> = mutableMapOf()
+        val results: MutableList<Pair<KExpr<KBoolSort>, MethodResult>> = mutableListOf()
         if (solver.isConsistent()) {
             nExecPerBlock.incrementExecCnt(block)
             block.simulateInstructions(frame, interpreter)
@@ -74,18 +75,18 @@ class Executor(
                     for ((block, newConstraint) in terminatorRes.regularPaths) {
                         val newFrame = Frame<ProgramValue>(frame)
                         val subResults = dfsExecute(block, newFrame, newConstraint, depth + 1, nExecPerBlock)
-                        results.putAll(subResults)
+                        results.addAll(subResults)
                     }
                     if (terminatorRes.exceptionAndCondition != null) {
                         val (exc, failureCond) = terminatorRes.exceptionAndCondition
                         val fullCond = ctx.mkAnd(failureCond, *solver.currentlyActiveFormulas.toTypedArray())
-                        results[fullCond] = ThrowResult(exc)
+                        results.add(Pair(fullCond, ThrowResult(exc)))
                     }
                 }
 
                 is Return -> {
                     val cond = ctx.mkAnd(solver.currentlyActiveFormulas)
-                    results[cond] = ReturnResult(terminatorRes.returnedValue)
+                    results.add(Pair(cond, ReturnResult(terminatorRes.returnedValue)))
                 }
             }
             nExecPerBlock.decrementExecCnt(block)
@@ -132,7 +133,7 @@ class Executor(
                     Return(result)
                 }
 
-                terminator is SingleSuccessorTerminator -> PossiblePaths(
+                terminator is GotoTerminator -> PossiblePaths(
                     listOf(terminator.successor to ctx.mkTrue()),
                     null
                 )
@@ -190,6 +191,10 @@ class Executor(
                         listOf(terminator.successor to correctnessFormula),
                         if (canProveSuccess || canProveFailure) null else exception to failureFormula
                     )
+                }
+
+                terminator is MethodInvocationTerminator -> {
+                    TODO()
                 }
 
                 else -> throw AssertionError("unexpected terminator: ${terminator.fullDescr()}")

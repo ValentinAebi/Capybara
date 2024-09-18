@@ -13,7 +13,7 @@ import org.objectweb.asm.tree.LabelNode
 import org.objectweb.asm.tree.analysis.Frame
 
 
-const val ASSERTION_INSN_OPCODE = -63
+const val TERMINATOR_ADAPTER_INSN_OPCODE = -63
 
 sealed interface BasicBlockTerminator {
     fun resolve(resolver: Map<BasicBlock, BasicBlock>)
@@ -32,17 +32,19 @@ data object ThrowTerminator : BasicBlockTerminator {
     override fun fullDescr(): String = "throw"
 }
 
-class SingleSuccessorTerminator(successorBlock: BasicBlock) : BasicBlockTerminator {
+abstract class SingleSuccessorTerminator(successorBlock: BasicBlock) : BasicBlockTerminator {
 
     var successor: BasicBlock = successorBlock
         private set
 
-    override fun toString(): String = "goto $successor"
-    override fun fullDescr(): String = "goto $successor"
-
     override fun resolve(resolver: Map<BasicBlock, BasicBlock>) {
         successor = resolver[successor]!!
     }
+}
+
+class GotoTerminator(successorBlock: BasicBlock) : SingleSuccessorTerminator(successorBlock) {
+    override fun toString(): String = "goto $successor"
+    override fun fullDescr(): String = "goto $successor"
 }
 
 class IteTerminator(
@@ -121,8 +123,22 @@ class LookupSwitchTerminator(
     }
 }
 
-sealed class AssertionTerminator(successorBlock: BasicBlock) : BasicBlockTerminator,
-    AbstractInsnNode(ASSERTION_INSN_OPCODE) {
+class MethodInvocationTerminator(
+    val methodName: String,
+    val isDynamicallyDispatched: Boolean,
+    successorBlock: BasicBlock
+) : SingleSuccessorTerminator(successorBlock) {
+
+    override fun resolve(resolver: Map<BasicBlock, BasicBlock>) {
+        TODO("Not yet implemented")
+    }
+
+    override fun fullDescr(): String {
+        TODO("Not yet implemented")
+    }
+}
+
+sealed class AssertionTerminator(successorBlock: BasicBlock) : SingleSuccessorTerminator(successorBlock) {
 
     abstract val check: Check
 
@@ -131,25 +147,6 @@ sealed class AssertionTerminator(successorBlock: BasicBlock) : BasicBlockTermina
         valuesCreator: ValuesCreator,
         ctx: KContext
     ): KExpr<KBoolSort>
-
-    var successor: BasicBlock = successorBlock
-        private set
-
-    override fun getType(): Int {
-        throw UnsupportedOperationException()
-    }
-
-    override fun accept(methodVisitor: MethodVisitor?) {
-        throw UnsupportedOperationException()
-    }
-
-    override fun clone(clonedLabels: Map<LabelNode?, LabelNode?>?): AbstractInsnNode? {
-        throw UnsupportedOperationException()
-    }
-
-    override fun resolve(resolver: Map<BasicBlock, BasicBlock>) {
-        successor = resolver[successor]!!
-    }
 
     override fun toString(): String = "assertion $check, goto $successor"
 
@@ -235,4 +232,22 @@ class IsValidDivisorTerminator(successor: BasicBlock) : AssertionTerminator(succ
     }
 
     override fun fullDescr(): String = "divisor non-nullity check ; goto $successor ($check)"
+}
+
+class TerminatorInsnAdapter(val terminator: SingleSuccessorTerminator) :
+    AbstractInsnNode(TERMINATOR_ADAPTER_INSN_OPCODE) {
+
+    val successor: BasicBlock get() = terminator.successor
+
+    override fun getType(): Int {
+        throw UnsupportedOperationException()
+    }
+
+    override fun accept(methodVisitor: MethodVisitor?) {
+        throw UnsupportedOperationException()
+    }
+
+    override fun clone(clonedLabels: Map<LabelNode?, LabelNode?>?): AbstractInsnNode? {
+        throw UnsupportedOperationException()
+    }
 }

@@ -1,9 +1,15 @@
 package com.github.valentinaebi.capybara.programstruct
 
+import com.github.valentinaebi.capybara.InternalName
 import com.github.valentinaebi.capybara.cfg.Cfg
 import com.github.valentinaebi.capybara.cfg.buildCfg
 import com.github.valentinaebi.capybara.checking.insertAssertions
 import org.objectweb.asm.tree.MethodNode
+
+typealias MethodIdentifier = String
+
+fun mkMethodIdentifier(className: InternalName, methodName: String, descriptor: String): MethodIdentifier =
+    "$className#$methodName$descriptor"
 
 data class Method(
     val methodNode: MethodNode,

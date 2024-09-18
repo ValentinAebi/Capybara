@@ -1,10 +1,12 @@
 package com.github.valentinaebi.capybara.loading
 
 import com.github.valentinaebi.capybara.API_LEVEL
+import com.github.valentinaebi.capybara.GraphBuilder
 import com.github.valentinaebi.capybara.InternalName
 import com.github.valentinaebi.capybara.programstruct.Class
 import com.github.valentinaebi.capybara.programstruct.Method
-import com.github.valentinaebi.capybara.solving.SubtypingRelationBuilder
+import com.github.valentinaebi.capybara.programstruct.MethodIdentifier
+import com.github.valentinaebi.capybara.programstruct.mkMethodIdentifier
 import org.objectweb.asm.ClassVisitor
 import org.objectweb.asm.FieldVisitor
 import org.objectweb.asm.MethodVisitor
@@ -13,8 +15,10 @@ import org.objectweb.asm.Type
 import org.objectweb.asm.tree.MethodNode
 
 
-class ClassBuilder(private val subtypingMap: SubtypingRelationBuilder) :
-    ClassVisitor(API_LEVEL) {
+class ClassBuilder(
+    private val subtypingRelation: GraphBuilder<InternalName>,
+    private val callGraph: GraphBuilder<MethodIdentifier>
+) : ClassVisitor(API_LEVEL) {
     private var classInternalName: InternalName? = null
     private var srcFileName: String? = null
     private val fields: MutableMap<String, InternalName> = linkedMapOf()
@@ -26,12 +30,12 @@ class ClassBuilder(private val subtypingMap: SubtypingRelationBuilder) :
     override fun visit(
         version: Int,
         access: Int,
-        name: String?,
+        name: String,
         signature: String?,
         superName: String?,
         interfaces: Array<out String?>?
     ) {
-        classInternalName = name!!
+        classInternalName = name
         if ((access and Opcodes.ACC_FINAL) != 0) {
             methodsMayBeOverriden = false
         }
@@ -46,8 +50,8 @@ class ClassBuilder(private val subtypingMap: SubtypingRelationBuilder) :
 
     override fun visitMethod(
         access: Int,
-        name: String?,
-        descriptor: String?,
+        name: String,
+        descriptor: String,
         signature: String?,
         exceptions: Array<out String>?
     ): MethodVisitor {
@@ -55,7 +59,9 @@ class ClassBuilder(private val subtypingMap: SubtypingRelationBuilder) :
         val mayBeOverridden =
             methodsMayBeOverriden && (access and (Opcodes.ACC_FINAL or Opcodes.ACC_STATIC or Opcodes.ACC_PRIVATE) == 0)
         val hasReceiver = (access and Opcodes.ACC_STATIC) == 0
-        return MethodBuilder(methodNode, mayBeOverridden, hasReceiver, methods)
+        val methodId = mkMethodIdentifier(classInternalName!!, name, descriptor)
+        callGraph.addIsolatedVertex(methodId)
+        return MethodBuilder(methodId, methodNode, mayBeOverridden, hasReceiver, methods, callGraph)
     }
 
     override fun visitField(
@@ -74,7 +80,7 @@ class ClassBuilder(private val subtypingMap: SubtypingRelationBuilder) :
     }
 
     private fun saveSubtyping(subT: InternalName, superT: InternalName) {
-        subtypingMap.getOrPut(subT) { mutableSetOf() }.add(superT)
+        subtypingRelation.addEdge(subT, superT)
     }
 
 }

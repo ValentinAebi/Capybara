@@ -1,11 +1,12 @@
+import com.github.valentinaebi.capybara.GraphBuilder
+import com.github.valentinaebi.capybara.InternalName
 import com.github.valentinaebi.capybara.OBJECT
 import com.github.valentinaebi.capybara.STRING
 import com.github.valentinaebi.capybara.checking.Issue
 import com.github.valentinaebi.capybara.checking.Reporter
 import com.github.valentinaebi.capybara.loading.readClassFile
+import com.github.valentinaebi.capybara.programstruct.MethodIdentifier
 import com.github.valentinaebi.capybara.solving.Solver
-import com.github.valentinaebi.capybara.solving.SubtypingRelation
-import com.github.valentinaebi.capybara.solving.SubtypingRelationBuilder
 import com.github.valentinaebi.capybara.symbolicexecution.Executor
 import com.github.valentinaebi.capybara.symbolicexecution.SymbolicInterpreter
 import com.github.valentinaebi.capybara.values.OperatorsContext
@@ -31,8 +32,9 @@ class ProjectsTests {
         mvnCompile(pomFilePath.toFile())
         val issuesMatchers = readAnnotatedSrcFile(fooSourceFile).toMutableList()
 
-        val subtypeRelBuilder: SubtypingRelationBuilder = mutableMapOf()
-        val fooClass = readClassFile(fooClassFile, subtypeRelBuilder)
+        val subtypingRelationBuilder = GraphBuilder<InternalName>()
+        val callGraphBuilder = GraphBuilder<MethodIdentifier>()
+        val fooClass = readClassFile(fooClassFile, subtypingRelationBuilder, callGraphBuilder)
 
         val reporter = Reporter()
         reporter.currentClass = fooClass
@@ -53,11 +55,20 @@ class ProjectsTests {
 
         checkIssuesAgainstMatchers(issuesMatchers, issues)
 
-        val subtypingRelation = SubtypingRelation(subtypeRelBuilder)
-        with(subtypingRelation) {
-            assertTrue(fooClass.className.subtypeOf(OBJECT))
-            assertFalse(fooClass.className.subtypeOf(STRING))
-        }
+        val subtypingRelation = subtypingRelationBuilder.immutableViewOnGraph
+        assertTrue(subtypingRelation.hasEdge(fooClass.className, OBJECT))
+        assertFalse(subtypingRelation.hasEdge(fooClass.className, STRING))
+
+        val systemOutPrintln = "java/io/PrintStream#println(Ljava/lang/String;)V"
+        val tableSwitch = "Foo#tableSwitch(I)V"
+        val affineF = "Foo#affineF(I)I"
+        val callGraph = callGraphBuilder.immutableViewOnGraph
+        val vertices = callGraph.vertices
+        assertTrue(systemOutPrintln in vertices)
+        assertTrue(tableSwitch in vertices)
+        assertTrue(affineF in vertices)
+        assertTrue(callGraph.hasEdge(tableSwitch, systemOutPrintln))
+        assertFalse(callGraph.hasEdge(affineF, systemOutPrintln))
     }
 
     private fun checkIssuesAgainstMatchers(
@@ -91,7 +102,7 @@ class ProjectsTests {
         request.goals = listOf("compile")
         val invoker = DefaultInvoker()
         val mavenHome = System.getenv("MAVEN_HOME")
-        assert(mavenHome != null){ "Please define the MAVEN_HOME environment variable" }
+        assert(mavenHome != null) { "Please define the MAVEN_HOME environment variable" }
         invoker.mavenHome = File(mavenHome)
         invoker.execute(request)
     }

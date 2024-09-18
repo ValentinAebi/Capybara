@@ -2,8 +2,8 @@ package com.github.valentinaebi.capybara
 
 import com.github.valentinaebi.capybara.checking.Reporter
 import com.github.valentinaebi.capybara.loading.readClassFilesInDirTrees
+import com.github.valentinaebi.capybara.programstruct.MethodIdentifier
 import com.github.valentinaebi.capybara.solving.Solver
-import com.github.valentinaebi.capybara.solving.SubtypingRelationBuilder
 import com.github.valentinaebi.capybara.symbolicexecution.Executor
 import com.github.valentinaebi.capybara.symbolicexecution.SymbolicInterpreter
 import com.github.valentinaebi.capybara.values.OperatorsContext
@@ -16,11 +16,12 @@ fun main(args: Array<String>) {
 
     val timer = Timer()
     val topLevelFiles = args.map { File(it) }
-    val subtypeRel: SubtypingRelationBuilder = mutableMapOf()
+    val subtypeRelationBuilder = GraphBuilder<InternalName>()
+    val callGraphBuilder = GraphBuilder<MethodIdentifier>()
 
     // Load class files
     timer.reset()
-    val classes = readClassFilesInDirTrees(topLevelFiles, subtypeRel)
+    val classes = readClassFilesInDirTrees(topLevelFiles, subtypeRelationBuilder, callGraphBuilder)
     val loadingTime = timer.elapsedTime()
 
     // Build CFGs

@@ -68,6 +68,7 @@ class SymbolicInterpreter(
                         is Double -> mkDoubleValue(cst)
                         is String -> {
                             val strValue = mkSymbolicRef()
+                            solver.saveNonNull(strValue)
                             // TODO save string value
                             // TODO add type constraint (String)
                             strValue
@@ -150,7 +151,7 @@ class SymbolicInterpreter(
                     Opcodes.ARRAYLENGTH -> valuesCreator.arrayLen(value.ref())
                     Opcodes.CHECKCAST -> {
                         // TODO should be a terminating instruction
-                        // TODO check cast is possible
+                        // TODO check that cast is possible
                         // TODO save new type
                         value
                     }
@@ -260,9 +261,7 @@ class SymbolicInterpreter(
         requireNotNull(values)
         return with(valuesCreator) {
             with(operatorsContext) {
-                // TODO consider inferred method contracts
-                val opcode = insn.opcode
-                when (opcode) {
+                when (val opcode = insn.opcode) {
                     in Opcodes.INVOKEVIRTUAL..Opcodes.INVOKEINTERFACE -> {
                         val methodDesc = (insn as MethodInsnNode).desc
                         val retType = Type.getReturnType(methodDesc)
@@ -278,7 +277,9 @@ class SymbolicInterpreter(
                     Opcodes.MULTIANEWARRAY -> {
                         // TODO add checks here
                         // TODO save length
-                        mkSymbolicRef()
+                        val array = mkSymbolicRef()
+                        solver.saveNonNull(array)
+                        array
                     }
 
                     else -> throw AssertionError("unexpected opcode: ${Printer.OPCODES[opcode]}")

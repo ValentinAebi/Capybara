@@ -1,15 +1,7 @@
 package com.github.valentinaebi.capybara.values
 
-import io.ksmt.expr.KExpr
-import io.ksmt.expr.KFp32Value
-import io.ksmt.expr.KFp64Value
-import io.ksmt.expr.KInt32NumExpr
-import io.ksmt.expr.KInt64NumExpr
-import io.ksmt.sort.KBv32Sort
-import io.ksmt.sort.KFp32Sort
-import io.ksmt.sort.KFp64Sort
-import io.ksmt.sort.KIntSort
-import io.ksmt.sort.KSort
+import io.ksmt.expr.*
+import io.ksmt.sort.*
 import org.objectweb.asm.tree.analysis.Value
 
 sealed interface ProgramValue : Value {

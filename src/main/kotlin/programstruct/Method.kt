@@ -6,10 +6,10 @@ import com.github.valentinaebi.capybara.cfg.buildCfg
 import com.github.valentinaebi.capybara.checking.insertAssertions
 import org.objectweb.asm.tree.MethodNode
 
-typealias MethodIdentifier = String
-
-fun mkMethodIdentifier(className: InternalName, methodName: String, descriptor: String): MethodIdentifier =
-    "$className#$methodName$descriptor"
+data class MethodIdentifier(val className: InternalName, val methodName: String, val descriptor: String){
+    val returnTypeDescr: String get() = descriptor.takeLastWhile { it != ')' }
+    override fun toString(): String = "$className#$methodName$descriptor"
+}
 
 data class Method(
     val methodId: MethodIdentifier,

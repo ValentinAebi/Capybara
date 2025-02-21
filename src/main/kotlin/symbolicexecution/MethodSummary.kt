@@ -2,8 +2,6 @@ package com.github.valentinaebi.capybara.symbolicexecution
 
 import com.github.valentinaebi.capybara.programstruct.Method
 import com.github.valentinaebi.capybara.values.ProgramValue
-import com.github.valentinaebi.capybara.values.ValuesCreator
-import io.ksmt.KContext
 import io.ksmt.expr.KExpr
 import io.ksmt.sort.KBoolSort
 
@@ -25,15 +23,6 @@ class MethodSummary private constructor(
         resultsList.map { it.second }.toTypedArray()
     )
 
-    fun argsAssignmentFormula(args: List<ProgramValue>, ctx: KContext, valuesCreator: ValuesCreator): KExpr<KBoolSort> {
-        return ctx.mkAnd(
-            params.zip<ProgramValue, ProgramValue>(args)
-                .map<Pair<ProgramValue, ProgramValue>, KExpr<KBoolSort>> { (p, a) ->
-                    valuesCreator.areEqualFormula(p, a)
-                }
-        )
-    }
-
     override fun toString(): String {
         val sb = StringBuilder()
         sb.append("Summary of ").append(method.methodName).append(":\n¦   params = [ ")
@@ -50,12 +39,16 @@ class MethodSummary private constructor(
 
 }
 
-sealed class MethodResult
+sealed interface MethodResult {
+    fun subst(substF: (ProgramValue) -> ProgramValue): MethodResult
+}
 
-data class ReturnResult(val returnedValue: ProgramValue?) : MethodResult() {
+data class ReturnResult(val returnedValue: ProgramValue?) : MethodResult {
+    override fun subst(substF: (ProgramValue) -> ProgramValue): ReturnResult = ReturnResult(returnedValue?.let(substF))
     override fun toString(): String = "return ${returnedValue?.ksmtValue ?: "<void>"}"
 }
 
-data class ThrowResult(val thrownException: ProgramValue) : MethodResult() {
+data class ThrowResult(val thrownException: ProgramValue) : MethodResult {
+    override fun subst(substF: (ProgramValue) -> ProgramValue): ThrowResult = ThrowResult(thrownException.let(substF))
     override fun toString(): String = "throw ${thrownException.ksmtValue}"
 }

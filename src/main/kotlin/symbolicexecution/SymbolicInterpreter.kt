@@ -3,20 +3,10 @@ package com.github.valentinaebi.capybara.symbolicexecution
 import com.github.valentinaebi.capybara.API_LEVEL
 import com.github.valentinaebi.capybara.checking.Reporter
 import com.github.valentinaebi.capybara.solving.Solver
-import com.github.valentinaebi.capybara.values.Int32Value
-import com.github.valentinaebi.capybara.values.LongValue
-import com.github.valentinaebi.capybara.values.OperatorsContext
-import com.github.valentinaebi.capybara.values.ProgramValue
-import com.github.valentinaebi.capybara.values.ValuesCreator
+import com.github.valentinaebi.capybara.values.*
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.Type
-import org.objectweb.asm.tree.AbstractInsnNode
-import org.objectweb.asm.tree.FieldInsnNode
-import org.objectweb.asm.tree.IntInsnNode
-import org.objectweb.asm.tree.InvokeDynamicInsnNode
-import org.objectweb.asm.tree.LdcInsnNode
-import org.objectweb.asm.tree.MethodInsnNode
-import org.objectweb.asm.tree.TypeInsnNode
+import org.objectweb.asm.tree.*
 import org.objectweb.asm.tree.analysis.Interpreter
 import org.objectweb.asm.util.Printer
 
@@ -39,9 +29,8 @@ class SymbolicInterpreter(
 
     override fun newOperation(insn: AbstractInsnNode?): ProgramValue {
         updateLine(insn!!)
-        val opcode = insn.opcode
         return with(valuesCreator) {
-            when (opcode) {
+            when (val opcode = insn.opcode) {
                 Opcodes.ACONST_NULL -> nullValue
                 Opcodes.ICONST_M1 -> minusOne_int
                 Opcodes.ICONST_0 -> zero_int
@@ -80,7 +69,7 @@ class SymbolicInterpreter(
 
                 Opcodes.GETSTATIC -> {
                     val descriptor = (insn as FieldInsnNode).desc
-                    return mkSymbolicValue(descriptor)
+                    mkSymbolicValue(descriptor)
                 }
 
                 Opcodes.NEW -> {
@@ -106,8 +95,7 @@ class SymbolicInterpreter(
         requireNotNull(value)
         return with(valuesCreator) {
             with(operatorsContext) {
-                val opcode = insn.opcode
-                when (opcode) {
+                when (val opcode = insn.opcode) {
                     Opcodes.INEG -> -value.int32()
                     Opcodes.LNEG -> -value.long()
                     Opcodes.FNEG -> -value.float()
@@ -177,8 +165,7 @@ class SymbolicInterpreter(
         assert(l.size == r.size)
         return with(valuesCreator) {
             with(operatorsContext) {
-                val opcode = insn.opcode
-                when (opcode) {
+                when (val opcode = insn.opcode) {
                     // TODO load value if array is owned
                     Opcodes.IALOAD, Opcodes.BALOAD, Opcodes.CALOAD, Opcodes.SALOAD -> mkSymbolicInt32()
 

@@ -3,26 +3,13 @@
 package com.github.valentinaebi.capybara.cfg
 
 import com.github.valentinaebi.capybara.UNKNOWN_LINE_NUMBER
-import com.github.valentinaebi.capybara.cfg.BinaryOperandStackPredicate.Equal
-import com.github.valentinaebi.capybara.cfg.BinaryOperandStackPredicate.GreaterThan
-import com.github.valentinaebi.capybara.cfg.BinaryOperandStackPredicate.LessThan
-import com.github.valentinaebi.capybara.cfg.UnaryOperandStackPredicate.GreaterThanZero
-import com.github.valentinaebi.capybara.cfg.UnaryOperandStackPredicate.IsNull
-import com.github.valentinaebi.capybara.cfg.UnaryOperandStackPredicate.IsZero
-import com.github.valentinaebi.capybara.cfg.UnaryOperandStackPredicate.LessThanZero
+import com.github.valentinaebi.capybara.cfg.BinaryOperandStackPredicate.*
+import com.github.valentinaebi.capybara.cfg.UnaryOperandStackPredicate.*
 import org.objectweb.asm.Label
 import org.objectweb.asm.Opcodes
-import org.objectweb.asm.tree.AbstractInsnNode
-import org.objectweb.asm.tree.JumpInsnNode
-import org.objectweb.asm.tree.LabelNode
-import org.objectweb.asm.tree.LineNumberNode
-import org.objectweb.asm.tree.LookupSwitchInsnNode
-import org.objectweb.asm.tree.TableSwitchInsnNode
-import org.objectweb.asm.tree.TryCatchBlockNode
+import org.objectweb.asm.tree.*
 import org.objectweb.asm.tree.analysis.AnalyzerException
 import org.objectweb.asm.util.Printer
-import kotlin.collections.contains
-import kotlin.collections.get
 import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.contract
 

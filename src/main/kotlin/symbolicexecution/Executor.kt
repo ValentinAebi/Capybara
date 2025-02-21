@@ -1,18 +1,7 @@
 package com.github.valentinaebi.capybara.symbolicexecution
 
 import com.github.valentinaebi.capybara.UNKNOWN_LINE_NUMBER
-import com.github.valentinaebi.capybara.cfg.AssertionTerminator
-import com.github.valentinaebi.capybara.cfg.BasicBlock
-import com.github.valentinaebi.capybara.cfg.BasicBlockTerminator
-import com.github.valentinaebi.capybara.cfg.BinaryOperandStackPredicate
-import com.github.valentinaebi.capybara.cfg.IteTerminator
-import com.github.valentinaebi.capybara.cfg.LookupSwitchTerminator
-import com.github.valentinaebi.capybara.cfg.ReturnTerminator
-import com.github.valentinaebi.capybara.cfg.GotoTerminator
-import com.github.valentinaebi.capybara.cfg.MethodInvocationTerminator
-import com.github.valentinaebi.capybara.cfg.TableSwitchTerminator
-import com.github.valentinaebi.capybara.cfg.ThrowTerminator
-import com.github.valentinaebi.capybara.cfg.UnaryOperandStackPredicate
+import com.github.valentinaebi.capybara.cfg.*
 import com.github.valentinaebi.capybara.checking.Reporter
 import com.github.valentinaebi.capybara.programstruct.Method
 import com.github.valentinaebi.capybara.solving.Solver
@@ -194,6 +183,7 @@ class Executor(
                 }
 
                 terminator is MethodInvocationTerminator -> {
+                    // TODO maybe make larger basic blocks and define mechanism for exiting them in case of an exception
                     TODO()
                 }
 

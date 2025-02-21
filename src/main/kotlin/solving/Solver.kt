@@ -9,8 +9,7 @@ import io.ksmt.expr.KUniversalQuantifier
 import io.ksmt.solver.KSolverStatus
 import io.ksmt.solver.z3.KZ3Solver
 import io.ksmt.sort.KBoolSort
-import java.util.Deque
-import java.util.LinkedList
+import java.util.*
 import kotlin.time.Duration.Companion.seconds
 
 class Solver(private val ctx: KContext, private val valuesCreator: ValuesCreator) {

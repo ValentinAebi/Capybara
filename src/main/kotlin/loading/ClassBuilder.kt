@@ -6,12 +6,7 @@ import com.github.valentinaebi.capybara.InternalName
 import com.github.valentinaebi.capybara.programstruct.Class
 import com.github.valentinaebi.capybara.programstruct.Method
 import com.github.valentinaebi.capybara.programstruct.MethodIdentifier
-import com.github.valentinaebi.capybara.programstruct.mkMethodIdentifier
-import org.objectweb.asm.ClassVisitor
-import org.objectweb.asm.FieldVisitor
-import org.objectweb.asm.MethodVisitor
-import org.objectweb.asm.Opcodes
-import org.objectweb.asm.Type
+import org.objectweb.asm.*
 import org.objectweb.asm.tree.MethodNode
 
 
@@ -22,7 +17,7 @@ class ClassBuilder(
     private var classInternalName: InternalName? = null
     private var srcFileName: String? = null
     private val fields: MutableMap<String, InternalName> = linkedMapOf()
-    private val methods: LinkedHashMap<String, Method> = linkedMapOf()
+    private val methods: LinkedHashMap<MethodIdentifier, Method> = linkedMapOf()
     private var methodsMayBeOverriden: Boolean = true
 
     fun toClass(): Class = Class(classInternalName!!, fields, methods, srcFileName!!)
@@ -59,7 +54,7 @@ class ClassBuilder(
         val mayBeOverridden =
             methodsMayBeOverriden && (access and (Opcodes.ACC_FINAL or Opcodes.ACC_STATIC or Opcodes.ACC_PRIVATE) == 0)
         val hasReceiver = (access and Opcodes.ACC_STATIC) == 0
-        val methodId = mkMethodIdentifier(classInternalName!!, name, descriptor)
+        val methodId = MethodIdentifier(classInternalName!!, name, descriptor)
         callGraph.addIsolatedVertex(methodId)
         return MethodBuilder(methodId, methodNode, mayBeOverridden, hasReceiver, methods, callGraph)
     }

@@ -59,9 +59,9 @@ class ProjectsTests {
         assertTrue(subtypingRelation.hasEdge(fooClass.className, OBJECT))
         assertFalse(subtypingRelation.hasEdge(fooClass.className, STRING))
 
-        val systemOutPrintln = "java/io/PrintStream#println(Ljava/lang/String;)V"
-        val tableSwitch = "Foo#tableSwitch(I)V"
-        val affineF = "Foo#affineF(I)I"
+        val systemOutPrintln = MethodIdentifier("java/io/PrintStream", "println", "(Ljava/lang/String;)V")
+        val tableSwitch = MethodIdentifier("Foo", "tableSwitch", "(I)V")
+        val affineF = MethodIdentifier("Foo", "affineF", "(I)I")
         val callGraph = callGraphBuilder.immutableViewOnGraph
         val vertices = callGraph.vertices
         assertTrue(systemOutPrintln in vertices)

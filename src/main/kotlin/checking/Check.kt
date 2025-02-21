@@ -1,10 +1,6 @@
 package com.github.valentinaebi.capybara.checking
 
-import com.github.valentinaebi.capybara.ARITH_EXCEPTION
-import com.github.valentinaebi.capybara.ARRAY_IDX_OUT_OF_BOUNDS_EXCEPTION
-import com.github.valentinaebi.capybara.InternalName
-import com.github.valentinaebi.capybara.NEG_ARRAY_SIZE_EXCEPTION
-import com.github.valentinaebi.capybara.NULL_POINTER_EXCEPTION
+import com.github.valentinaebi.capybara.*
 
 enum class Check(val msg: String, val exception: InternalName) {
 

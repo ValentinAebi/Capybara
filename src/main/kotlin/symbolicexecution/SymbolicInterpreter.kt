@@ -275,10 +275,11 @@ class SymbolicInterpreter(
                     }
 
                     Opcodes.MULTIANEWARRAY -> {
-                        // TODO add checks here
-                        // TODO save length
+                        // TODO check that it is indeed first, not last
+                        val len = values.first().int32()
                         val array = mkSymbolicRef()
                         solver.saveNonNull(array)
+                        solver.saveArrayLength(array, len)
                         array
                     }
 
